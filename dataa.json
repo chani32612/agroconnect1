@@ -1,0 +1,128 @@
+{
+    "users": [
+      {
+        "id": 1,
+        "username": "farmer101",
+        "email": "farmer101@email.com",
+        "password": "hash1",
+        "role": "farmer"
+      },
+      {
+        "id": 2,
+        "username": "consumer_jane",
+        "email": "jane.c@email.com",
+        "password": "hash2",
+        "role": "consumer"
+      },
+      {
+        "id": 3,
+        "username": "expert_rk",
+        "email": "rkexpert@agro.com",
+        "password": "hash3",
+        "role": "expert"
+      },
+      {
+        "id": 4,
+        "username": "supplymax",
+        "email": "contact@supplymax.com",
+        "password": "hash4",
+        "role": "supplier"
+      }
+    ],
+    "farmers": [
+      {
+        "user_id": 1,
+        "full_name": "Ravi Patel",
+        "phone": "9876543210",
+        "location": "Ahmedabad, Gujarat"
+      }
+    ],
+    "consumers": [
+      {
+        "user_id": 2,
+        "full_name": "Jane Collins",
+        "phone": "9123456789",
+        "address": "MG Road, Bengaluru"
+      }
+    ],
+    "experts": [
+      {
+        "user_id": 3,
+        "full_name": "Dr. RK Sharma",
+        "expertise": "Soil Science, Crop Protection",
+        "phone": "9250012345"
+      }
+    ],
+    "suppliers": [
+      {
+        "user_id": 4,
+        "company_name": "SupplyMax Agro",
+        "contact_person": "Anil Kumar",
+        "phone": "9332123456",
+        "location": "Ludhiana, Punjab"
+      }
+    ],
+    "products": [
+      {
+        "id": 101,
+        "supplier_id": 4,
+        "product_name": "Urea Fertilizer",
+        "description": "High-grade urea for wheat & rice",
+        "price": 600.0,
+        "quantity": 200
+      },
+      {
+        "id": 102,
+        "supplier_id": 4,
+        "product_name": "Neem Oil",
+        "description": "Natural pesticide for organic farming",
+        "price": 450.0,
+        "quantity": 80
+      },
+      {
+        "id": 103,
+        "supplier_id": 4,
+        "product_name": "Potassium Nitrate",
+        "description": "Soluble fertilizer for vegetables",
+        "price": 990.0,
+        "quantity": 120
+      }
+    ],
+    "farmer_products": [
+      {
+        "id": 201,
+        "farmer_id": 1,
+        "name": "Fresh Tomatoes",
+        "category": "Vegetables",
+        "description": "Organic red tomatoes, freshly harvested",
+        "price": 40.0,
+        "quantity": 100,
+        "unit": "kg",
+        "harvest_date": "2024-01-15",
+        "expiry_date": "2024-01-25",
+        "location": "Ahmedabad, Gujarat",
+        "organic": true,
+        "image_url": "https://images.unsplash.com/photo-1546470427-e5ac89cd0b31?w=300&h=200&fit=crop",
+        "status": "available",
+        "created_at": "2024-01-15T10:00:00Z"
+      },
+      {
+        "id": 202,
+        "farmer_id": 1,
+        "name": "Wheat Grain",
+        "category": "Grains",
+        "description": "High quality wheat grain, suitable for flour making",
+        "price": 25.0,
+        "quantity": 500,
+        "unit": "kg",
+        "harvest_date": "2024-01-10",
+        "expiry_date": "2024-06-10",
+        "location": "Ahmedabad, Gujarat",
+        "organic": false,
+        "image_url": "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=300&h=200&fit=crop",
+        "status": "available",
+        "created_at": "2024-01-10T08:30:00Z"
+      }
+    ]
+  }
+  
