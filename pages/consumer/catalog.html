@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgroConnect – Catalog</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script src="/auth.js"></script>
+  <script src="/consumer-products.js"></script>
+  <script src="/components/components.js" defer></script>
+  <style>
+    :root { --green:#375432; --accent:#36b94a; --bg:#f7f6ea; }
+    body { margin:0; font-family:'Georgia', serif; background:var(--bg); color:var(--green);}    
+    .container { max-width:1200px; margin:20px auto; padding:0 20px; }
+
+    .search-row { display:flex; gap:12px; margin:16px 0 22px; }
+    .search-row input { flex:1; padding:12px 14px; border:1.5px solid #86b691; border-radius:9px; font-size:1.05em; background:#fff; }
+    .search-row button { background:#408a46;color:#fff;border:none;padding:10px 22px;border-radius:9px;font-size:1.02em;cursor:pointer;font-weight:600; }
+
+    .categories { display:flex; gap:16px; flex-wrap:wrap; margin: 12px 0 20px; }
+    .category-card { background:#f6fff4; border:2px solid #d2fad1; color:#33823d; font-weight:600; border-radius:12px; padding:14px 16px; cursor:pointer; }
+    .products-row { display:flex; gap:18px; flex-wrap:wrap; }
+    .product-card { background:#fff; border-radius:14px; width:220px; box-shadow:0 2px 8px #17741014; padding:0 0 14px; display:flex; flex-direction:column; align-items:center; }
+    .product-card img { width:100%; height:120px; object-fit:cover; border-top-left-radius:14px; border-top-right-radius:14px; background:#f6fff4; }
+    .product-desc { padding:10px 14px 0; text-align:center; width:100%; box-sizing:border-box; }
+    .product-title { font-weight:700; margin-bottom:6px; }
+    .product-price { color:var(--accent); font-weight:700; margin-bottom:6px; }
+    .add-btn { background:#e6fbe3; color:#25632a; border:1.4px solid #98e59d; padding:7px 0; border-radius:8px; width:88%; font-size:1em; cursor:pointer; margin-top:6px; }
+
+    @media (max-width: 700px) { .products-row {flex-direction:column;} .product-card {width:100%;} }
+  </style>
+</head>
+<body>
+  <div data-include="/components/header.html"></div>
+
+  <main class="container">
+    <h1 style="margin:10px 0 6px;">Browse Products</h1>
+
+    <form class="search-row" onsubmit="event.preventDefault(); const v = this.querySelector('input').value.trim(); v ? searchProducts(v) : displayProductsForConsumers();">
+      <input placeholder="Search by name, category, farmer..." />
+      <button type="submit"><i class="fas fa-search"></i> Search</button>
+    </form>
+
+    <section class="categories">
+      <div class="category-card" onclick="filterProductsByCategory('all')">All</div>
+      <div class="category-card" onclick="filterProductsByCategory('Vegetables')">Vegetables</div>
+      <div class="category-card" onclick="filterProductsByCategory('Fruits')">Fruits</div>
+      <div class="category-card" onclick="filterProductsByCategory('Dairy')">Dairy</div>
+      <div class="category-card" onclick="filterProductsByCategory('Grains')">Grains</div>
+    </section>
+
+    <h3 id="section-title">Featured Products</h3>
+    <div class="products-row"></div>
+  </main>
+
+  <div data-include="/components/footer.html"></div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async function() {
+      if (!protectPage('consumer')) return;
+      await loadUserDataForConsumer();
+      displayProductsForConsumers();
+    });
+  </script>
+</body>
+</html>

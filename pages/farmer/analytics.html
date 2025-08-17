@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgroConnect – Farmer Analytics</title>
+  <script src="/auth.js"></script>
+  <script src="/farmer-products.js"></script>
+  <script src="/components/components.js" defer></script>
+  <!-- Chart.js for data visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { margin:0; font-family:'Georgia', serif; background:#f7f6ea; color:#375432; }
+    .container { max-width:1100px; margin: 20px auto; padding: 0 20px; }
+    .page-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin: 6px 0 16px; }
+    .card { background:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.08); padding:16px; margin-bottom:20px; }
+    .stats-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:20px; }
+    .stat-card { background:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.08); padding:16px; text-align:center; }
+    .stat-number { font-size:2em; font-weight:700; color:#375432; margin:10px 0; }
+    .stat-label { color:#666; font-size:0.9em; }
+    .chart-container { height:300px; margin-bottom:20px; }
+    .chart-row { display:grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap:20px; margin-bottom:20px; }
+    .filter-tabs { display:flex; gap:10px; margin: 10px 0 18px; flex-wrap:wrap; }
+    .filter-tab { background:#fff; border:2px solid #375432; color:#375432; padding:.45rem .8rem; border-radius:8px; cursor:pointer; }
+    .filter-tab.active { background:#375432; color:#fff; }
+    .table-container { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+    th { background-color: #f8f9fa; font-weight: 600; }
+    tr:hover { background-color: #f5f5f5; }
+  </style>
+</head>
+<body>
+  <div data-include="/components/header.html"></div>
+
+  <main class="container">
+    <div class="page-head">
+      <h1 style="margin:0;">Analytics Dashboard</h1>
+      <div class="filter-tabs">
+        <div class="filter-tab active" data-period="week">This Week</div>
+        <div class="filter-tab" data-period="month">This Month</div>
+        <div class="filter-tab" data-period="year">This Year</div>
+        <div class="filter-tab" data-period="all">All Time</div>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Sales</div>
+        <div class="stat-number" id="total-sales">₹0</div>
+        <div class="stat-trend">+12% from last period</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Orders</div>
+        <div class="stat-number" id="total-orders">0</div>
+        <div class="stat-trend">+5% from last period</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Products</div>
+        <div class="stat-number" id="total-products">0</div>
+        <div class="stat-trend">+2 new this period</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Customers</div>
+        <div class="stat-number" id="total-customers">0</div>
+        <div class="stat-trend">+3 new this period</div>
+      </div>
+    </div>
+
+    <div class="chart-row">
+      <div class="card">
+        <h3>Sales Trend</h3>
+        <div class="chart-container">
+          <canvas id="sales-chart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Top Products</h3>
+        <div class="chart-container">
+          <canvas id="products-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-row">
+      <div class="card">
+        <h3>Customer Demographics</h3>
+        <div class="chart-container">
+          <canvas id="demographics-chart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Order Status</h3>
+        <div class="chart-container">
+          <canvas id="status-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Recent Orders</h3>
+      <div class="table-container">
+        <table id="recent-orders-table">
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Date</th>
+              <th>Customer</th>
+              <th>Products</th>
+              <th>Total</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Table rows will be populated by JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/components/footer.html"></div>
+
+  <script>
+    let currentPeriod = 'week';
+    let salesChart, productsChart, demographicsChart, statusChart;
+    
+    function getOrders() {
+      const user = getCurrentUser();
+      if (!user) return [];
+      return JSON.parse(localStorage.getItem(`farmer_orders_${user.id}`) || '[]');
+    }
+    
+    function getProducts() {
+      const user = getCurrentUser();
+      if (!user) return [];
+      return JSON.parse(localStorage.getItem(`farmer_products_${user.id}`) || '[]');
+    }
+    
+    function getCustomers() {
+      // In a real app, this would fetch actual customer data
+      // For demo, we'll extract unique customers from orders
+      const orders = getOrders();
+      const uniqueCustomers = new Set(orders.map(o => o.customerId));
+      return Array.from(uniqueCustomers).map(id => {
+        const order = orders.find(o => o.customerId === id);
+        return {
+          id,
+          name: order?.customerName || `Customer ${id}`,
+          location: order?.customerAddress?.split(',').pop().trim() || 'Unknown',
+          orderCount: orders.filter(o => o.customerId === id).length,
+          totalSpent: orders.filter(o => o.customerId === id).reduce((sum, o) => sum + o.total, 0)
+        };
+      });
+    }
+    
+    function filterDataByPeriod(data, dateField) {
+      const now = new Date();
+      let startDate;
+      
+      switch(currentPeriod) {
+        case 'week':
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+          break;
+        case 'month':
+          startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+          break;
+        case 'year':
+          startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+          break;
+        case 'all':
+        default:
+          return data; // No filtering for all time
+      }
+      
+      return data.filter(item => new Date(item[dateField]) >= startDate);
+    }
+    
+    function updateStats() {
+      const orders = filterDataByPeriod(getOrders(), 'orderDate');
+      const products = getProducts();
+      const customers = getCustomers();
+      
+      // Update summary stats
+      document.getElementById('total-sales').textContent = `₹${orders.reduce((sum, o) => sum + o.total, 0).toFixed(0)}`;
+      document.getElementById('total-orders').textContent = orders.length;
+      document.getElementById('total-products').textContent = products.length;
+      document.getElementById('total-customers').textContent = customers.length;
+      
+      // Update recent orders table
+      const tableBody = document.querySelector('#recent-orders-table tbody');
+      tableBody.innerHTML = orders
+        .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
+        .slice(0, 5) // Show only 5 most recent orders
+        .map(order => `
+          <tr>
+            <td>#${order.id}</td>
+            <td>${new Date(order.orderDate).toLocaleDateString()}</td>
+            <td>${order.customerName}</td>
+            <td>${order.items.length} items</td>
+            <td>₹${order.total.toFixed(0)}</td>
+            <td><span class="order-status status-${order.status}">${order.status[0].toUpperCase() + order.status.slice(1)}</span></td>
+          </tr>
+        `).join('');
+      
+      updateCharts(orders, products, customers);
+    }
+    
+    function updateCharts(orders, products, customers) {
+      // Prepare data for sales chart (last 7 days/weeks/months based on period)
+      const salesData = prepareSalesData(orders);
+      
+      // Update sales trend chart
+      if (salesChart) salesChart.destroy();
+      salesChart = new Chart(document.getElementById('sales-chart'), {
+        type: 'line',
+        data: {
+          labels: salesData.labels,
+          datasets: [{
+            label: 'Sales (₹)',
+            data: salesData.data,
+            borderColor: '#375432',
+            backgroundColor: 'rgba(55, 84, 50, 0.1)',
+            tension: 0.3,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(value) {
+                  return '₹' + value;
+                }
+              }
+            }
+          }
+        }
+      });
+      
+      // Prepare data for top products chart
+      const productData = prepareProductData(orders, products);
+      
+      // Update products chart
+      if (productsChart) productsChart.destroy();
+      productsChart = new Chart(document.getElementById('products-chart'), {
+        type: 'bar',
+        data: {
+          labels: productData.labels,
+          datasets: [{
+            label: 'Sales (₹)',
+            data: productData.data,
+            backgroundColor: [
+              'rgba(55, 84, 50, 0.7)',
+              'rgba(75, 192, 192, 0.7)',
+              'rgba(153, 102, 255, 0.7)',
+              'rgba(255, 159, 64, 0.7)',
+              'rgba(255, 99, 132, 0.7)'
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(value) {
+                  return '₹' + value;
+                }
+              }
+            }
+          }
+        }
+      });
+      
+      // Prepare data for demographics chart
+      const demographicData = prepareDemographicData(customers);
+      
+      // Update demographics chart
+      if (demographicsChart) demographicsChart.destroy();
+      demographicsChart = new Chart(document.getElementById('demographics-chart'), {
+        type: 'pie',
+        data: {
+          labels: demographicData.labels,
+          datasets: [{
+            data: demographicData.data,
+            backgroundColor: [
+              'rgba(55, 84, 50, 0.7)',
+              'rgba(75, 192, 192, 0.7)',
+              'rgba(153, 102, 255, 0.7)',
+              'rgba(255, 159, 64, 0.7)',
+              'rgba(255, 99, 132, 0.7)'
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false
+        }
+      });
+      
+      // Prepare data for order status chart
+      const statusData = prepareStatusData(orders);
+      
+      // Update status chart
+      if (statusChart) statusChart.destroy();
+      statusChart = new Chart(document.getElementById('status-chart'), {
+        type: 'doughnut',
+        data: {
+          labels: statusData.labels,
+          datasets: [{
+            data: statusData.data,
+            backgroundColor: [
+              'rgba(255, 206, 86, 0.7)', // pending - yellow
+              'rgba(75, 192, 192, 0.7)',  // confirmed - green
+              'rgba(54, 162, 235, 0.7)',  // delivered - blue
+              'rgba(255, 99, 132, 0.7)'   // cancelled - red
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false
+        }
+      });
+    }
+    
+    function prepareSalesData(orders) {
+      // Generate date labels based on current period
+      const labels = [];
+      const data = [];
+      const now = new Date();
+      let format, count, dateStep;
+      
+      switch(currentPeriod) {
+        case 'week':
+          format = date => date.toLocaleDateString('en-US', { weekday: 'short' });
+          count = 7;
+          dateStep = day => new Date(now.getFullYear(), now.getMonth(), now.getDate() - (6 - day));
+          break;
+        case 'month':
+          format = date => `Week ${Math.ceil(date.getDate() / 7)}`;
+          count = 4;
+          dateStep = week => new Date(now.getFullYear(), now.getMonth(), now.getDate() - (now.getDate() % 7) - (7 * (3 - week)));
+          break;
+        case 'year':
+          format = date => date.toLocaleDateString('en-US', { month: 'short' });
+          count = 12;
+          dateStep = month => new Date(now.getFullYear(), now.getMonth() - (11 - month), 1);
+          break;
+        case 'all':
+        default:
+          // For all time, show last 6 months
+          format = date => date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+          count = 6;
+          dateStep = month => new Date(now.getFullYear(), now.getMonth() - (5 - month), 1);
+      }
+      
+      // Generate labels and initialize data points
+      for (let i = 0; i < count; i++) {
+        const date = dateStep(i);
+        labels.push(format(date));
+        data.push(0);
+      }
+      
+      // Aggregate order totals by period
+      orders.forEach(order => {
+        const orderDate = new Date(order.orderDate);
+        let index;
+        
+        switch(currentPeriod) {
+          case 'week':
+            // Map to day of week (0-6)
+            index = 6 - Math.floor((now - orderDate) / (1000 * 60 * 60 * 24));
+            break;
+          case 'month':
+            // Map to week of month (0-3)
+            index = 3 - Math.floor((now.getDate() - orderDate.getDate()) / 7);
+            break;
+          case 'year':
+            // Map to month of year (0-11)
+            index = 11 - (now.getMonth() - orderDate.getMonth() + (now.getFullYear() - orderDate.getFullYear()) * 12);
+            break;
+          case 'all':
+          default:
+            // Map to last 6 months
+            index = 5 - (now.getMonth() - orderDate.getMonth() + (now.getFullYear() - orderDate.getFullYear()) * 12);
+        }
+        
+        if (index >= 0 && index < count) {
+          data[index] += order.total;
+        }
+      });
+      
+      return { labels, data };
+    }
+    
+    function prepareProductData(orders, products) {
+      // Aggregate sales by product
+      const productSales = {};
+      
+      orders.forEach(order => {
+        order.items.forEach(item => {
+          if (!productSales[item.productId]) {
+            productSales[item.productId] = {
+              name: item.productName,
+              total: 0
+            };
+          }
+          productSales[item.productId].total += item.price * item.quantity;
+        });
+      });
+      
+      // Sort products by sales and take top 5
+      const topProducts = Object.values(productSales)
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 5);
+      
+      return {
+        labels: topProducts.map(p => p.name),
+        data: topProducts.map(p => p.total)
+      };
+    }
+    
+    function prepareDemographicData(customers) {
+      // Group customers by location
+      const locationCounts = {};
+      
+      customers.forEach(customer => {
+        const location = customer.location;
+        if (!locationCounts[location]) {
+          locationCounts[location] = 0;
+        }
+        locationCounts[location]++;
+      });
+      
+      // Sort locations by customer count
+      const sortedLocations = Object.entries(locationCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5); // Top 5 locations
+      
+      return {
+        labels: sortedLocations.map(([location]) => location),
+        data: sortedLocations.map(([, count]) => count)
+      };
+    }
+    
+    function prepareStatusData(orders) {
+      // Count orders by status
+      const statusCounts = {
+        pending: 0,
+        confirmed: 0,
+        delivered: 0,
+        cancelled: 0
+      };
+      
+      orders.forEach(order => {
+        if (statusCounts[order.status] !== undefined) {
+          statusCounts[order.status]++;
+        }
+      });
+      
+      return {
+        labels: Object.keys(statusCounts).map(s => s[0].toUpperCase() + s.slice(1)),
+        data: Object.values(statusCounts)
+      };
+    }
+    
+    // Initialize sample data if none exists
+    function initializeSampleData() {
+      const user = getCurrentUser();
+      if (!user) return;
+      
+      // Check if orders exist
+      const orders = getOrders();
+      if (orders.length === 0) {
+        // Generate sample orders if none exist
+        const sampleOrders = [
+          {
+            id: 1001,
+            customerId: 'cust123',
+            customerName: 'Rahul Sharma',
+            customerAddress: '123 Main St, Bangalore, Karnataka',
+            customerPhone: '9876543210',
+            orderDate: new Date(Date.now() - 86400000 * 2).toISOString(), // 2 days ago
+            status: 'pending',
+            items: [
+              {productId: 'p1', productName: 'Organic Tomatoes', quantity: 5, price: 40, total: 200},
+              {productId: 'p2', productName: 'Fresh Spinach', quantity: 2, price: 30, total: 60}
+            ],
+            total: 260
+          },
+          {
+            id: 1002,
+            customerId: 'cust456',
+            customerName: 'Priya Patel',
+            customerAddress: '456 Park Ave, Mumbai, Maharashtra',
+            customerPhone: '8765432109',
+            orderDate: new Date(Date.now() - 86400000 * 5).toISOString(), // 5 days ago
+            status: 'confirmed',
+            items: [
+              {productId: 'p3', productName: 'Organic Rice', quantity: 10, price: 60, total: 600}
+            ],
+            total: 600
+          },
+          {
+            id: 1003,
+            customerId: 'cust789',
+            customerName: 'Amit Kumar',
+            customerAddress: '789 Lake View, Chennai, Tamil Nadu',
+            customerPhone: '7654321098',
+            orderDate: new Date(Date.now() - 86400000 * 10).toISOString(), // 10 days ago
+            status: 'delivered',
+            items: [
+              {productId: 'p4', productName: 'Fresh Mangoes', quantity: 12, price: 50, total: 600},
+              {productId: 'p5', productName: 'Organic Wheat', quantity: 5, price: 45, total: 225}
+            ],
+            total: 825
+          },
+          {
+            id: 1004,
+            customerId: 'cust123',
+            customerName: 'Rahul Sharma',
+            customerAddress: '123 Main St, Bangalore, Karnataka',
+            customerPhone: '9876543210',
+            orderDate: new Date(Date.now() - 86400000 * 15).toISOString(), // 15 days ago
+            status: 'delivered',
+            items: [
+              {productId: 'p1', productName: 'Organic Tomatoes', quantity: 3, price: 40, total: 120},
+              {productId: 'p6', productName: 'Fresh Potatoes', quantity: 4, price: 25, total: 100}
+            ],
+            total: 220
+          },
+          {
+            id: 1005,
+            customerId: 'cust456',
+            customerName: 'Priya Patel',
+            customerAddress: '456 Park Ave, Mumbai, Maharashtra',
+            customerPhone: '8765432109',
+            orderDate: new Date(Date.now() - 86400000 * 20).toISOString(), // 20 days ago
+            status: 'cancelled',
+            items: [
+              {productId: 'p2', productName: 'Fresh Spinach', quantity: 1, price: 30, total: 30}
+            ],
+            total: 30
+          }
+        ];
+        
+        localStorage.setItem(`farmer_orders_${user.id}`, JSON.stringify(sampleOrders));
+      }
+      
+      // Check if products exist
+      const products = getProducts();
+      if (products.length === 0) {
+        // Generate sample products if none exist
+        const sampleProducts = [
+          { id: 'p1', name: 'Organic Tomatoes', price: 40, stock: 50, category: 'Vegetables' },
+          { id: 'p2', name: 'Fresh Spinach', price: 30, stock: 30, category: 'Vegetables' },
+          { id: 'p3', name: 'Organic Rice', price: 60, stock: 100, category: 'Grains' },
+          { id: 'p4', name: 'Fresh Mangoes', price: 50, stock: 40, category: 'Fruits' },
+          { id: 'p5', name: 'Organic Wheat', price: 45, stock: 80, category: 'Grains' },
+          { id: 'p6', name: 'Fresh Potatoes', price: 25, stock: 60, category: 'Vegetables' }
+        ];
+        
+        localStorage.setItem(`farmer_products_${user.id}`, JSON.stringify(sampleProducts));
+      }
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+      if (!protectPage('farmer')) return;
+      
+      // Initialize sample data
+      initializeSampleData();
+      
+      // Set up period filter tabs
+      document.querySelectorAll('.filter-tab').forEach(tab => {
+        tab.addEventListener('click', (e) => {
+          document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+          e.currentTarget.classList.add('active');
+          currentPeriod = e.currentTarget.dataset.period;
+          updateStats();
+        });
+      });
+      
+      // Initial update
+      updateStats();
+    });
+  </script>
+</body>
+</html>

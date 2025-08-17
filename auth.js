@@ -76,6 +76,43 @@ function displayUserInfo(containerId = 'user-info') {
   }
 }
 
+// Handle account creation
+function handleCreateAccount(event) {
+    event.preventDefault();
+
+    const username = document.getElementById('username').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const role = document.getElementById('role').value;
+
+    if (!username || !email || !password || !role) {
+        alert('All fields are required!');
+        return;
+    }
+
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+
+    if (users.some(user => user.email === email)) {
+        alert('An account with this email already exists!');
+        return;
+    }
+
+    const newUser = {
+        id: Date.now(),
+        username,
+        email,
+        password,
+        role,
+        createdAt: new Date().toISOString()
+    };
+
+    users.push(newUser);
+    localStorage.setItem('users', JSON.stringify(users));
+
+    alert('Account created successfully! You can now log in.');
+    window.location.href = 'login.html';
+}
+
 // Initialize dashboard (call this on dashboard pages)
 function initDashboard(requiredRole) {
   // Protect the page

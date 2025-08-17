@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgroConnect – Expert Profile</title>
+  <script src="/auth.js"></script>
+  <script src="/components/components.js" defer></script>
+  <style>
+    body { margin:0; font-family:'Georgia', serif; background:#f7f6ea; color:#375432; }
+    .container { max-width: 900px; margin: 20px auto; padding: 0 20px; }
+    .profile-card { background:white; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.08); overflow:hidden; }
+    .profile-header { background:linear-gradient(135deg, #375432, #4a6b3a); color:white; padding:26px 20px; text-align:center; }
+    .profile-avatar { width:92px; height:92px; border-radius:50%; background:rgba(255,255,255,0.2); margin:0 auto 10px; display:flex; align-items:center; justify-content:center; font-size:2.2em; }
+    .profile-content { padding: 20px; }
+    .section-title { font-size:1.15em; font-weight:700; color:#375432; margin: 12px 0; border-bottom:2px solid #375432; padding-bottom:6px; }
+    .form-row { display:flex; gap:12px; }
+    .form-group { flex:1; margin-bottom:12px; }
+    .form-group label { display:block; margin-bottom:6px; font-weight:600; }
+    .form-group input, .form-group textarea, .form-group select { width:100%; padding:10px; border:2px solid #ddd; border-radius:6px; font-family:'Georgia', serif; }
+    .save-btn { background:#375432; color:white; border:none; border-radius:8px; padding:12px 16px; width:100%; cursor:pointer; margin-top:8px; }
+    .stats-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:12px; }
+    .stat-card { background:#f8f9fa; padding:14px; border-radius:8px; text-align:center; }
+    .stat-number { font-size:1.8em; font-weight:700; color:#375432; }
+    .danger-zone { background:#fff5f5; border:2px solid #fed7d7; border-radius:8px; padding:14px; margin-top:18px; }
+    .delete-btn { background:#dc3545;color:#fff;border:none;padding:.7rem 1rem;border-radius:6px;cursor:pointer; }
+    .expertise-tags { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:15px; }
+    .expertise-tag { background:#e9f5e9; color:#375432; padding:6px 12px; border-radius:20px; font-size:0.9em; }
+    .tag-input { display:flex; gap:8px; margin-bottom:15px; }
+    .tag-input input { flex:1; }
+    .add-tag-btn { background:#375432; color:white; border:none; border-radius:6px; padding:10px; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <div data-include="/components/header.html"></div>
+
+  <main class="container">
+    <div class="profile-card">
+      <div class="profile-header">
+        <div class="profile-avatar" id="profile-avatar">👤</div>
+        <div class="profile-name" id="profile-name">Loading...</div>
+        <div class="profile-role">Agricultural Expert</div>
+      </div>
+      <div class="profile-content">
+        <div class="section-title">Expert Overview</div>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-number" id="total-articles">0</div><div>Articles Published</div></div>
+          <div class="stat-card"><div class="stat-number" id="total-consultations">0</div><div>Consultations</div></div>
+          <div class="stat-card"><div class="stat-number" id="total-followers">0</div><div>Followers</div></div>
+        </div>
+
+        <div class="section-title">Personal Information</div>
+        <form id="profile-form">
+          <div class="form-row">
+            <div class="form-group"><label for="full-name">Full Name</label><input id="full-name" required></div>
+            <div class="form-group"><label for="email">Email</label><input id="email" type="email" required readonly></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label for="phone">Phone</label><input id="phone" type="tel"></div>
+            <div class="form-group"><label for="qualification">Highest Qualification</label><input id="qualification"></div>
+          </div>
+          <div class="form-group"><label for="bio">Professional Bio</label><textarea id="bio" rows="4" placeholder="Share your expertise and experience"></textarea></div>
+          <div class="form-row">
+            <div class="form-group"><label for="institution">Institution/Organization</label><input id="institution"></div>
+            <div class="form-group"><label for="position">Current Position</label><input id="position"></div>
+          </div>
+        </form>
+
+        <div class="section-title">Areas of Expertise</div>
+        <div class="expertise-tags" id="expertise-tags">
+          <!-- Tags will be added here dynamically -->
+        </div>
+        <div class="tag-input">
+          <input id="new-expertise" placeholder="Add area of expertise (e.g., Organic Farming)">
+          <button class="add-tag-btn" onclick="addExpertiseTag()">Add</button>
+        </div>
+
+        <div class="section-title">Credentials</div>
+        <div class="form-group"><label for="years-experience">Years of Experience</label><input id="years-experience" type="number" min="0"></div>
+        <div class="form-group"><label for="certifications">Certifications</label><textarea id="certifications" placeholder="List your relevant certifications"></textarea></div>
+        <div class="form-group"><label for="research-interests">Research Interests</label><textarea id="research-interests" placeholder="Share your current research interests"></textarea></div>
+
+        <div class="section-title">Availability Preferences</div>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:10px;">
+          <label><input type="checkbox" id="available-weekends"> Available on Weekends</label>
+          <label><input type="checkbox" id="available-evenings"> Available Evenings</label>
+          <label><input type="checkbox" id="in-person-consultations"> In-person Consultations</label>
+          <label><input type="checkbox" id="virtual-consultations"> Virtual Consultations</label>
+          <label><input type="checkbox" id="field-visits"> Field Visits</label>
+          <label><input type="checkbox" id="workshop-availability"> Workshop Availability</label>
+        </div>
+
+        <button class="save-btn" onclick="saveProfile()">Save Changes</button>
+
+        <div class="danger-zone">
+          <div style="font-weight:700;color:#c53030;margin-bottom:8px;">Danger Zone</div>
+          <p>Once you delete your account, there is no going back. Please be certain.</p>
+          <button class="delete-btn" onclick="deleteAccount()">Delete Account</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/components/footer.html"></div>
+
+  <script>
+    // Initialize sample data if not exists
+    function initSampleData() {
+      const user = getCurrentUser();
+      if (!user) return;
+      
+      // Sample articles data
+      const articlesKey = `expert_articles_${user.id}`;
+      if (!localStorage.getItem(articlesKey)) {
+        const sampleArticles = [
+          { id: 1, title: "Sustainable Pest Management Techniques", publishDate: "2023-05-15", views: 245 },
+          { id: 2, title: "Water Conservation in Drought-Prone Areas", publishDate: "2023-07-22", views: 189 },
+          { id: 3, title: "Soil Health Improvement Strategies", publishDate: "2023-09-10", views: 312 }
+        ];
+        localStorage.setItem(articlesKey, JSON.stringify(sampleArticles));
+      }
+      
+      // Sample consultations data
+      const consultationsKey = `expert_consultations_${user.id}`;
+      if (!localStorage.getItem(consultationsKey)) {
+        const sampleConsultations = [
+          { id: 1, farmer: "Rajesh Kumar", date: "2023-10-05", topic: "Crop Disease Identification", status: "completed" },
+          { id: 2, farmer: "Anita Singh", date: "2023-10-12", topic: "Irrigation Systems", status: "completed" },
+          { id: 3, farmer: "Vijay Patel", date: "2023-10-18", topic: "Organic Certification", status: "scheduled" },
+          { id: 4, farmer: "Meena Devi", date: "2023-10-25", topic: "Soil Testing Results", status: "scheduled" }
+        ];
+        localStorage.setItem(consultationsKey, JSON.stringify(sampleConsultations));
+      }
+      
+      // Sample followers data
+      const followersKey = `expert_followers_${user.id}`;
+      if (!localStorage.getItem(followersKey)) {
+        const sampleFollowers = [
+          { id: 1, name: "Rajesh Kumar", location: "Punjab" },
+          { id: 2, name: "Anita Singh", location: "Haryana" },
+          { id: 3, name: "Vijay Patel", location: "Gujarat" },
+          { id: 4, name: "Meena Devi", location: "Rajasthan" },
+          { id: 5, name: "Suresh Reddy", location: "Andhra Pradesh" },
+          { id: 6, name: "Lakshmi Narayanan", location: "Tamil Nadu" },
+          { id: 7, name: "Priya Sharma", location: "Uttar Pradesh" }
+        ];
+        localStorage.setItem(followersKey, JSON.stringify(sampleFollowers));
+      }
+    }
+
+    function loadProfile() {
+      const user = getCurrentUser(); 
+      if (!user) return;
+      
+      document.getElementById('profile-name').textContent = user.details?.full_name || user.username;
+      document.getElementById('email').value = user.email;
+      
+      const name = user.details?.full_name || user.username; 
+      document.getElementById('profile-avatar').textContent = name.charAt(0).toUpperCase();
+      
+      const key = `expert_profile_${user.id}`; 
+      const saved = JSON.parse(localStorage.getItem(key) || '{}');
+      
+      const set = (id, val) => { 
+        const el = document.getElementById(id); 
+        if (el) { 
+          el.type === 'checkbox' ? (el.checked = !!val) : (el.value = val || ''); 
+        }
+      };
+      
+      set('full-name', saved.fullName || (user.details?.full_name || ''));
+      set('phone', saved.phone);
+      set('qualification', saved.qualification);
+      set('bio', saved.bio);
+      set('institution', saved.institution);
+      set('position', saved.position);
+      set('years-experience', saved.yearsExperience);
+      set('certifications', saved.certifications);
+      set('research-interests', saved.researchInterests);
+      set('available-weekends', saved.availableWeekends);
+      set('available-evenings', saved.availableEvenings);
+      set('in-person-consultations', saved.inPersonConsultations);
+      set('virtual-consultations', saved.virtualConsultations);
+      set('field-visits', saved.fieldVisits);
+      set('workshop-availability', saved.workshopAvailability);
+      
+      // Load expertise tags
+      const expertiseTags = saved.expertiseTags || [
+        "Organic Farming", "Pest Management", "Soil Health", "Water Conservation", "Crop Rotation"
+      ];
+      renderExpertiseTags(expertiseTags);
+      
+      // Load statistics
+      const articles = JSON.parse(localStorage.getItem(`expert_articles_${user.id}`) || '[]');
+      document.getElementById('total-articles').textContent = articles.length;
+      
+      const consultations = JSON.parse(localStorage.getItem(`expert_consultations_${user.id}`) || '[]');
+      document.getElementById('total-consultations').textContent = consultations.length;
+      
+      const followers = JSON.parse(localStorage.getItem(`expert_followers_${user.id}`) || '[]');
+      document.getElementById('total-followers').textContent = followers.length;
+    }
+
+    function renderExpertiseTags(tags) {
+      const container = document.getElementById('expertise-tags');
+      container.innerHTML = '';
+      
+      tags.forEach(tag => {
+        const tagElement = document.createElement('div');
+        tagElement.className = 'expertise-tag';
+        tagElement.textContent = tag;
+        tagElement.onclick = () => removeExpertiseTag(tag);
+        container.appendChild(tagElement);
+      });
+    }
+
+    function addExpertiseTag() {
+      const input = document.getElementById('new-expertise');
+      const tag = input.value.trim();
+      
+      if (!tag) return;
+      
+      const user = getCurrentUser();
+      if (!user) return;
+      
+      const key = `expert_profile_${user.id}`;
+      const saved = JSON.parse(localStorage.getItem(key) || '{}');
+      
+      const expertiseTags = saved.expertiseTags || [];
+      if (!expertiseTags.includes(tag)) {
+        expertiseTags.push(tag);
+        saved.expertiseTags = expertiseTags;
+        localStorage.setItem(key, JSON.stringify(saved));
+        renderExpertiseTags(expertiseTags);
+      }
+      
+      input.value = '';
+    }
+
+    function removeExpertiseTag(tagToRemove) {
+      const user = getCurrentUser();
+      if (!user) return;
+      
+      const key = `expert_profile_${user.id}`;
+      const saved = JSON.parse(localStorage.getItem(key) || '{}');
+      
+      const expertiseTags = saved.expertiseTags || [];
+      const updatedTags = expertiseTags.filter(tag => tag !== tagToRemove);
+      saved.expertiseTags = updatedTags;
+      localStorage.setItem(key, JSON.stringify(saved));
+      renderExpertiseTags(updatedTags);
+    }
+
+    function saveProfile() {
+      const user = getCurrentUser(); 
+      if (!user) return;
+      
+      const get = (id) => { 
+        const el = document.getElementById(id); 
+        return el.type === 'checkbox' ? el.checked : el.value; 
+      };
+      
+      const key = `expert_profile_${user.id}`;
+      const saved = JSON.parse(localStorage.getItem(key) || '{}');
+      
+      const profile = {
+        fullName: get('full-name'),
+        email: get('email'),
+        phone: get('phone'),
+        qualification: get('qualification'),
+        bio: get('bio'),
+        institution: get('institution'),
+        position: get('position'),
+        yearsExperience: get('years-experience'),
+        certifications: get('certifications'),
+        researchInterests: get('research-interests'),
+        availableWeekends: get('available-weekends'),
+        availableEvenings: get('available-evenings'),
+        inPersonConsultations: get('in-person-consultations'),
+        virtualConsultations: get('virtual-consultations'),
+        fieldVisits: get('field-visits'),
+        workshopAvailability: get('workshop-availability'),
+        expertiseTags: saved.expertiseTags || []
+      };
+      
+      localStorage.setItem(key, JSON.stringify(profile));
+      alert('Profile saved successfully!');
+    }
+
+    function deleteAccount() { 
+      if (!confirm('Delete your account? This cannot be undone.')) return; 
+      
+      const user = getCurrentUser(); 
+      if (!user) return; 
+      
+      localStorage.removeItem('currentUser'); 
+      alert('Account deleted (demo).'); 
+      window.location.href = '/index.html'; 
+    }
+
+    document.addEventListener('DOMContentLoaded', function() { 
+      if (!protectPage('expert')) return; 
+      initSampleData();
+      loadProfile(); 
+    });
+  </script>
+</body>
+</html>

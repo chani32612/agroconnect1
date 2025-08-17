@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgroConnect – Cart</title>
+  <script src="/auth.js"></script>
+  <script src="/consumer-products.js"></script>
+  <script src="/components/components.js" defer></script>
+  <style>
+    body { margin:0; font-family:'Georgia', serif; background:#f7f6ea; color:#375432; }
+    .container { max-width: 1100px; margin: 20px auto; padding: 0 20px; }
+    .cart-header { display:flex; justify-content:space-between; align-items:center; margin: 18px 0; }
+    .cart-items { background:white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.08); overflow:hidden; }
+    .cart-item { display:flex; align-items:center; padding: 16px; border-bottom:1px solid #eee; gap:12px; }
+    .item-image { width:80px; height:80px; object-fit:cover; border-radius:8px; }
+    .item-details { flex:1; }
+    .item-name { font-weight:700; }
+    .item-farmer { color:#666; font-size:.9em; }
+    .item-price { color:#375432; font-weight:600; }
+    .quantity-controls { display:flex; align-items:center; gap:8px; }
+    .quantity-btn { background:#375432; color:white; border:none; width:30px; height:30px; border-radius:4px; cursor:pointer; }
+    .quantity-input { width:50px; text-align:center; border:1px solid #ddd; border-radius:4px; padding:3px; }
+    .remove-btn { background:#dc3545;color:#fff;border:none;padding:.5rem 1rem;border-radius:6px;cursor:pointer; }
+    .cart-summary { background:white; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,.08); padding: 18px; margin-top:18px; }
+    .summary-row { display:flex; justify-content:space-between; margin: 8px 0; }
+    .summary-total { border-top:2px solid #375432; padding-top:10px; font-weight:700; }
+    .checkout-btn { background:#375432; color:white; border:none; border-radius:8px; padding:12px 16px; width:100%; cursor:pointer; margin-top:10px; }
+    .empty { text-align:center; color:#666; padding:40px 20px; }
+  </style>
+</head>
+<body>
+  <div data-include="/components/header.html"></div>
+
+  <main class="container">
+    <div class="cart-header">
+      <h1>Shopping Cart</h1>
+      <span id="cart-count">0 items</span>
+    </div>
+
+    <div id="cart-content"></div>
+  </main>
+
+  <div data-include="/components/footer.html"></div>
+
+  <script>
+    function getCart(){ const u=getCurrentUser(); if(!u) return []; return JSON.parse(localStorage.getItem(`cart_${u.id}`) || '[]'); }
+    function saveCart(c){ const u=getCurrentUser(); if(!u) return; localStorage.setItem(`cart_${u.id}`, JSON.stringify(c)); }
+
+    function displayCart(){
+      const cart = getCart();
+      const content = document.getElementById('cart-content');
+      const countEl = document.getElementById('cart-count');
+      countEl.textContent = `${cart.length} items`;
+      if(cart.length===0){
+        content.innerHTML = `<div class="empty"><h3>Your cart is empty</h3><p>Add some fresh products from local farmers!</p><a href="/pages/consumer/catalog.html" style="background:#375432;color:#fff;text-decoration:none;padding:.8rem 1.1rem;border-radius:8px;display:inline-block;margin-top:10px;">Continue Shopping</a></div>`;
+        return;
+      }
+      let total = 0;
+      const itemsHTML = cart.map(item=>{
+        const itemTotal = item.price * item.quantity; total += itemTotal;
+        return `<div class="cart-item" data-product-id="${item.productId}" data-farmer-id="${item.farmerId}">
+          <img class="item-image" src="https://images.unsplash.com/photo-1560493676-04071c5f467b?w=80&h=80&fit=crop" alt="${item.productName}">
+          <div class="item-details">
+            <div class="item-name">${item.productName}</div>
+            <div class="item-farmer">by ${item.farmerName}</div>
+            <div class="item-price">₹${item.price} / ${item.unit}</div>
+          </div>
+          <div class="quantity-controls">
+            <button class="quantity-btn" onclick="updateQuantity(${item.productId}, ${item.farmerId}, ${item.quantity - 1})">-</button>
+            <input type="number" class="quantity-input" value="${item.quantity}" min="1" onchange="updateQuantity(${item.productId}, ${item.farmerId}, this.value)">
+            <button class="quantity-btn" onclick="updateQuantity(${item.productId}, ${item.farmerId}, ${item.quantity + 1})">+</button>
+          </div>
+          <div style="width:100px;text-align:right;font-weight:600;">₹${itemTotal.toFixed(2)}</div>
+          <button class="remove-btn" onclick="removeFromCart(${item.productId}, ${item.farmerId})">Remove</button>
+        </div>`
+      }).join('');
+
+      content.innerHTML = `<div class="cart-items">${itemsHTML}</div>
+        <div class="cart-summary">
+          <div class="summary-row"><span>Subtotal:</span><span>₹${total.toFixed(2)}</span></div>
+          <div class="summary-row"><span>Delivery Fee:</span><span>₹50.00</span></div>
+          <div class="summary-row summary-total"><span>Total:</span><span>₹${(total+50).toFixed(2)}</span></div>
+          <button class="checkout-btn" onclick="proceedToCheckout()">Proceed to Checkout</button>
+        </div>`;
+    }
+
+    function updateQuantity(productId, farmerId, q){ if(q<1){ removeFromCart(productId, farmerId); return;} const cart=getCart(); const i=cart.findIndex(it=>it.productId===productId && it.farmerId===farmerId); if(i!==-1){ cart[i].quantity=parseInt(q); saveCart(cart); displayCart(); showConsumerNotification('Cart updated!','success'); } }
+    function removeFromCart(productId, farmerId){ const cart=getCart().filter(it=>!(it.productId===productId && it.farmerId===farmerId)); saveCart(cart); displayCart(); showConsumerNotification('Item removed from cart!','info'); }
+    function proceedToCheckout(){ const cart=getCart(); if(cart.length===0){ showConsumerNotification('Your cart is empty!','error'); return;} const u=getCurrentUser(); const key=`orders_${u.id}`; const orders=JSON.parse(localStorage.getItem(key)||'[]'); const newOrder={ id:Date.now(), items:cart, total: cart.reduce((s,it)=>s+(it.price*it.quantity),0)+50, status:'pending', orderDate:new Date().toISOString(), deliveryAddress: u.details?.address || 'Address not provided' }; orders.push(newOrder); localStorage.setItem(key, JSON.stringify(orders)); saveCart([]); showConsumerNotification('Order placed successfully!','success'); setTimeout(()=>{ window.location.href='/pages/consumer/orders.html'; }, 1200); }
+
+    document.addEventListener('DOMContentLoaded', function(){ if(!protectPage('consumer')) return; displayCart(); });
+  </script>
+</body>
+</html>

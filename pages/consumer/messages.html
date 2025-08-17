@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgroConnect – Messages</title>
+  <script src="/auth.js"></script>
+  <script src="/consumer-products.js"></script>
+  <script src="/components/components.js" defer></script>
+  <style>
+    body { margin:0; font-family:'Georgia', serif; background:#f7f6ea; color:#375432; }
+    .container { max-width: 1100px; margin: 22px auto; padding: 0 20px; }
+    .page-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin: 6px 0 16px; }
+    .card { background:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.08); padding:16px; }
+
+    .compose { display:flex; gap:10px; flex-wrap: wrap; align-items:flex-end; }
+    .compose select, .compose textarea { border:1.5px solid #86b691; border-radius:8px; padding:10px; background:#ffffff; font-size:1em; }
+    .compose select { min-width: 220px; }
+    .compose textarea { flex:1; min-height: 70px; resize: vertical; }
+    .compose button { background:#375432; color:#fff; border:0; border-radius:8px; padding:10px 16px; cursor:pointer; }
+    .compose button:hover { background:#20301d; }
+
+    .messages { margin-top:16px; }
+    .msg-list { display:flex; flex-direction:column; gap:10px; max-height: 55vh; overflow:auto; padding-right:4px; }
+    .msg { display:flex; gap:10px; }
+    .msg.you { justify-content:flex-end; }
+    .bubble { max-width: 70%; background:#e6fbe3; border:1px solid #98e59d; color:#25632a; padding:10px 12px; border-radius:12px; }
+    .msg.you .bubble { background:#375432; color:#fff; border-color:#375432; }
+    .meta { font-size:.78em; color:#6f7e6d; margin-top:4px; }
+    .empty { text-align:center; color:#666; padding:28px 10px; }
+  </style>
+</head>
+<body>
+  <!-- Shared header -->
+  <div data-include="/components/header.html"></div>
+
+  <main class="container">
+    <div class="page-head">
+      <h1 style="margin:0;">Messages</h1>
+    </div>
+
+    <section class="card">
+      <h3 style="margin:0 0 10px 0;">New message</h3>
+      <div class="compose">
+        <label style="display:flex; flex-direction:column; gap:6px; font-size:.95em;">
+          Recipient
+          <select id="recipient">
+            <option value="">Select a farmer…</option>
+          </select>
+        </label>
+        <label style="flex:1; display:flex; flex-direction:column; gap:6px; font-size:.95em;">
+          Message
+          <textarea id="messageText" placeholder="Type your message..."></textarea>
+        </label>
+        <button id="sendBtn">Send</button>
+      </div>
+    </section>
+
+    <section class="messages card" style="margin-top:16px;">
+      <h3 style="margin:0 0 10px 0;">Conversation</h3>
+      <div id="messages" class="msg-list"></div>
+    </section>
+  </main>
+
+  <!-- Shared footer -->
+  <div data-include="/components/footer.html"></div>
+
+  <script>
+    const state = { recipients: [], user: null };
+
+    function messagesKey(userId){ return `messages_${userId}`; }
+    function loadMessages(){
+      const raw = localStorage.getItem(messagesKey(state.user.id));
+      try { return raw ? JSON.parse(raw) : []; } catch { return []; }
+    }
+    function saveMessages(list){ localStorage.setItem(messagesKey(state.user.id), JSON.stringify(list)); }
+
+    async function loadRecipients(){
+      // Try local cache first
+      let data = null;
+      try { data = JSON.parse(localStorage.getItem('userData') || 'null'); } catch {}
+      if(!data){
+        try {
+          const res = await fetch('/dataa.json');
+          data = await res.json();
+          localStorage.setItem('userData', JSON.stringify(data));
+        } catch(e){ console.warn('Failed to load userData', e); }
+      }
+      const farmers = (data?.users || []).filter(u => u.role === 'farmer');
+      const farmerDetails = data?.farmers || [];
+      state.recipients = farmers.map(f => {
+        const d = farmerDetails.find(x => x.user_id === f.id);
+        return { id: f.id, name: d?.full_name || f.username };
+      });
+      const sel = document.getElementById('recipient');
+      sel.innerHTML = '<option value="">Select a farmer…</option>' + state.recipients.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+    }
+
+    function renderMessages(){
+      const box = document.getElementById('messages');
+      const list = loadMessages().sort((a,b)=> new Date(a.ts) - new Date(b.ts));
+      if(list.length === 0){ box.innerHTML = '<div class="empty">No messages yet. Start a conversation above.</div>'; return; }
+      box.innerHTML = list.map(m => {
+        const you = m.fromId === state.user.id;
+        const to = you ? `To ${m.toName}` : `From ${m.fromName}`;
+        return `<div class="msg ${you ? 'you':''}">
+          <div class="bubble">
+            <div>${m.text.replace(/</g,'&lt;')}</div>
+            <div class="meta">${to} • ${new Date(m.ts).toLocaleString()}</div>
+          </div>
+        </div>`;
+      }).join('');
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function sendMessage(){
+      const sel = document.getElementById('recipient');
+      const ta = document.getElementById('messageText');
+      const toId = parseInt(sel.value, 10);
+      const text = (ta.value || '').trim();
+      if(!toId){ showConsumerNotification('Please choose a recipient','error'); return; }
+      if(!text){ showConsumerNotification('Message cannot be empty','error'); return; }
+      const to = state.recipients.find(r => r.id === toId);
+      const list = loadMessages();
+      const msg = {
+        id: Date.now(),
+        fromId: state.user.id,
+        fromName: (state.user.details?.full_name) || state.user.username,
+        toRole: 'farmer',
+        toId,
+        toName: to?.name || `Farmer ${toId}`,
+        text,
+        ts: new Date().toISOString()
+      };
+      list.push(msg);
+      saveMessages(list);
+      ta.value = '';
+      renderMessages();
+      showConsumerNotification('Message sent','success');
+
+      // Optional: simulate quick auto-reply from farmer
+      setTimeout(()=>{
+        const reply = {
+          id: Date.now()+1,
+          fromId: toId,
+          fromName: msg.toName,
+          toRole: 'consumer',
+          toId: state.user.id,
+          toName: msg.fromName,
+          text: 'Thanks for reaching out! I will get back to you with details. 🌱',
+          ts: new Date().toISOString()
+        };
+        const l2 = loadMessages(); l2.push(reply); saveMessages(l2); renderMessages();
+      }, 800);
+    }
+
+    document.addEventListener('DOMContentLoaded', async ()=>{
+      if(!protectPage('consumer')) return;
+      state.user = getCurrentUser();
+      await loadRecipients();
+      renderMessages();
+      document.getElementById('sendBtn').addEventListener('click', sendMessage);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgroConnect – Supplier Messages</title>
+  <script src="/auth.js"></script>
+  <script src="/supplier-products.js"></script>
+  <script src="/components/components.js" defer></script>
+  <style>
+    body { margin:0; font-family:'Georgia', serif; background:#f7f6ea; color:#375432; }
+    .container { max-width: 1100px; margin: 22px auto; padding: 0 20px; }
+    .page-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin: 6px 0 16px; }
+    .card { background:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.08); padding:16px; }
+
+    .compose { display:flex; gap:10px; flex-wrap: wrap; align-items:flex-end; }
+    .compose select, .compose textarea { border:1.5px solid #86b691; border-radius:8px; padding:10px; background:#ffffff; font-size:1em; }
+    .compose select { min-width: 220px; }
+    .compose textarea { flex:1; min-height: 70px; resize: vertical; }
+    .compose button { background:#375432; color:#fff; border:0; border-radius:8px; padding:10px 16px; cursor:pointer; }
+    .compose button:hover { background:#20301d; }
+
+    .messages { margin-top:16px; }
+    .msg-list { display:flex; flex-direction:column; gap:10px; max-height: 55vh; overflow:auto; padding-right:4px; }
+    .msg { display:flex; gap:10px; }
+    .msg.you { justify-content:flex-end; }
+    .bubble { max-width: 70%; background:#e6fbe3; border:1px solid #98e59d; color:#25632a; padding:10px 12px; border-radius:12px; }
+    .msg.you .bubble { background:#375432; color:#fff; border-color:#375432; }
+    .meta { font-size:.78em; color:#6f7e6d; margin-top:4px; }
+    .empty { text-align:center; color:#666; padding:28px 10px; }
+    
+    .contacts-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    .contact-item { display: flex; align-items: center; padding: 10px; border-radius: 8px; cursor: pointer; }
+    .contact-item:hover { background: #f0f7f0; }
+    .contact-item.active { background: #e6fbe3; }
+    .contact-avatar { width: 40px; height: 40px; border-radius: 50%; background: #375432; color: white; display: flex; align-items: center; justify-content: center; margin-right: 12px; }
+    .contact-info { flex: 1; }
+    .contact-name { font-weight: 600; }
+    .contact-role { font-size: 0.8em; color: #666; }
+    .unread-badge { background: #e74c3c; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; }
+    
+    .layout { display: grid; grid-template-columns: 300px 1fr; gap: 16px; }
+    @media (max-width: 768px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Shared header -->
+  <div data-include="/components/header.html"></div>
+
+  <main class="container">
+    <div class="page-head">
+      <h1 style="margin:0;">Messages</h1>
+    </div>
+
+    <div class="layout">
+      <section class="card">
+        <h3 style="margin:0 0 10px 0;">Contacts</h3>
+        <div class="contacts-list" id="contacts-list">
+          <!-- Contacts will be loaded here -->
+        </div>
+      </section>
+      
+      <div>
+        <section class="card">
+          <h3 style="margin:0 0 10px 0;">New message</h3>
+          <div class="compose">
+            <label style="display:flex; flex-direction:column; gap:6px; font-size:.95em;">
+              Recipient
+              <select id="recipient">
+                <option value="">Select a recipient…</option>
+              </select>
+            </label>
+            <label style="flex:1; display:flex; flex-direction:column; gap:6px; font-size:.95em;">
+              Message
+              <textarea id="messageText" placeholder="Type your message..."></textarea>
+            </label>
+            <button id="sendBtn">Send</button>
+          </div>
+        </section>
+
+        <section class="messages card" style="margin-top:16px;">
+          <h3 style="margin:0 0 10px 0;">Conversation with <span id="current-contact">Selected Contact</span></h3>
+          <div id="messages" class="msg-list"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <!-- Shared footer -->
+  <div data-include="/components/footer.html"></div>
+
+  <script>
+    const state = { 
+      recipients: [], 
+      user: null,
+      currentRecipient: null,
+      contacts: []
+    };
+
+    function messagesKey(userId){ return `supplier_messages_${userId}`; }
+    function loadMessages(){
+      const raw = localStorage.getItem(messagesKey(state.user.id));
+      try { return raw ? JSON.parse(raw) : []; } catch { return []; }
+    }
+    function saveMessages(list){ localStorage.setItem(messagesKey(state.user.id), JSON.stringify(list)); }
+
+    async function loadRecipients(){
+      // Try local cache first
+      let data = null;
+      try { data = JSON.parse(localStorage.getItem('userData') || 'null'); } catch {}
+      if(!data){
+        try {
+          const res = await fetch('/dataa.json');
+          data = await res.json();
+          localStorage.setItem('userData', JSON.stringify(data));
+        } catch(e){ console.warn('Failed to load userData', e); }
+      }
+      
+      // Load farmers
+      const farmers = (data?.users || []).filter(u => u.role === 'farmer');
+      const farmerDetails = data?.farmers || [];
+      const farmerRecipients = farmers.map(f => {
+        const d = farmerDetails.find(x => x.user_id === f.id);
+        return { id: f.id, name: d?.full_name || f.username, role: 'farmer' };
+      });
+      
+      // Load experts
+      const experts = (data?.users || []).filter(u => u.role === 'expert');
+      const expertDetails = data?.experts || [];
+      const expertRecipients = experts.map(e => {
+        const d = expertDetails.find(x => x.user_id === e.id);
+        return { id: e.id, name: d?.full_name || e.username, role: 'expert' };
+      });
+      
+      state.recipients = [...farmerRecipients, ...expertRecipients];
+      
+      const sel = document.getElementById('recipient');
+      sel.innerHTML = '<option value="">Select a recipient…</option>' + 
+        '<optgroup label="Farmers">' +
+        farmerRecipients.map(r => `<option value="${r.id}" data-role="${r.role}">${r.name}</option>`).join('') +
+        '</optgroup>' +
+        '<optgroup label="Experts">' +
+        expertRecipients.map(r => `<option value="${r.id}" data-role="${r.role}">${r.name}</option>`).join('') +
+        '</optgroup>';
+      
+      updateContacts();
+    }
+    
+    function updateContacts() {
+      const messages = loadMessages();
+      const contactsMap = new Map();
+      
+      // Add all recipients as potential contacts
+      state.recipients.forEach(r => {
+        contactsMap.set(r.id, {
+          id: r.id,
+          name: r.name,
+          role: r.role,
+          unread: 0,
+          lastMessage: null
+        });
+      });
+      
+      // Update contacts with message data
+      messages.forEach(msg => {
+        const contactId = msg.fromId === state.user.id ? msg.toId : msg.fromId;
+        if (!contactsMap.has(contactId)) {
+          contactsMap.set(contactId, {
+            id: contactId,
+            name: msg.fromId === state.user.id ? msg.toName : msg.fromName,
+            role: msg.fromId === state.user.id ? msg.toRole : msg.fromRole,
+            unread: 0,
+            lastMessage: null
+          });
+        }
+        
+        const contact = contactsMap.get(contactId);
+        if (!contact.lastMessage || new Date(msg.ts) > new Date(contact.lastMessage.ts)) {
+          contact.lastMessage = msg;
+        }
+        
+        // Count unread messages
+        if (msg.fromId !== state.user.id && !msg.read) {
+          contact.unread++;
+        }
+      });
+      
+      // Convert map to array and sort by last message time
+      state.contacts = Array.from(contactsMap.values())
+        .filter(c => c.lastMessage) // Only show contacts with messages
+        .sort((a, b) => {
+          if (!a.lastMessage) return 1;
+          if (!b.lastMessage) return -1;
+          return new Date(b.lastMessage.ts) - new Date(a.lastMessage.ts);
+        });
+      
+      renderContacts();
+    }
+    
+    function renderContacts() {
+      const container = document.getElementById('contacts-list');
+      if (state.contacts.length === 0) {
+        container.innerHTML = '<div class="empty">No conversations yet.</div>';
+        return;
+      }
+      
+      container.innerHTML = state.contacts.map(contact => {
+        const isActive = state.currentRecipient && state.currentRecipient.id === contact.id;
+        const unreadBadge = contact.unread > 0 ? `<div class="unread-badge">${contact.unread}</div>` : '';
+        const lastMessagePreview = contact.lastMessage ? 
+          contact.lastMessage.text.substring(0, 30) + (contact.lastMessage.text.length > 30 ? '...' : '') : '';
+        
+        return `<div class="contact-item ${isActive ? 'active' : ''}" data-id="${contact.id}" data-role="${contact.role}">
+          <div class="contact-avatar">${contact.name.charAt(0).toUpperCase()}</div>
+          <div class="contact-info">
+            <div class="contact-name">${contact.name}</div>
+            <div class="contact-role">${contact.role.charAt(0).toUpperCase() + contact.role.slice(1)}</div>
+            <div class="contact-preview">${lastMessagePreview}</div>
+          </div>
+          ${unreadBadge}
+        </div>`;
+      }).join('');
+      
+      // Add click event listeners
+      document.querySelectorAll('.contact-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const contactId = parseInt(item.dataset.id, 10);
+          const contactRole = item.dataset.role;
+          const contact = state.contacts.find(c => c.id === contactId);
+          
+          if (contact) {
+            state.currentRecipient = contact;
+            document.getElementById('current-contact').textContent = contact.name;
+            document.getElementById('recipient').value = contact.id;
+            
+            // Mark messages as read
+            const messages = loadMessages();
+            let hasUnread = false;
+            messages.forEach(msg => {
+              if (msg.fromId === contactId && !msg.read) {
+                msg.read = true;
+                hasUnread = true;
+              }
+            });
+            
+            if (hasUnread) {
+              saveMessages(messages);
+              updateContacts();
+            }
+            
+            renderMessages();
+            
+            // Update active state
+            document.querySelectorAll('.contact-item').forEach(el => {
+              el.classList.toggle('active', el.dataset.id === String(contactId));
+            });
+          }
+        });
+      });
+    }
+
+    function renderMessages(){
+      const box = document.getElementById('messages');
+      if (!state.currentRecipient) {
+        box.innerHTML = '<div class="empty">Select a contact to view conversation.</div>';
+        return;
+      }
+      
+      const list = loadMessages()
+        .filter(m => {
+          return (m.fromId === state.user.id && m.toId === state.currentRecipient.id) ||
+                 (m.toId === state.user.id && m.fromId === state.currentRecipient.id);
+        })
+        .sort((a,b)=> new Date(a.ts) - new Date(b.ts));
+      
+      if(list.length === 0){ 
+        box.innerHTML = '<div class="empty">No messages yet with this contact. Start a conversation above.</div>'; 
+        return; 
+      }
+      
+      box.innerHTML = list.map(m => {
+        const you = m.fromId === state.user.id;
+        const to = you ? `To ${m.toName}` : `From ${m.fromName}`;
+        return `<div class="msg ${you ? 'you':''}">
+          <div class="bubble">
+            <div>${m.text.replace(/</g,'&lt;')}</div>
+            <div class="meta">${to} • ${new Date(m.ts).toLocaleString()}</div>
+          </div>
+        </div>`;
+      }).join('');
+      
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function sendMessage(){
+      const sel = document.getElementById('recipient');
+      const ta = document.getElementById('messageText');
+      const toId = parseInt(sel.value, 10);
+      const text = (ta.value || '').trim();
+      
+      if(!toId){ alert('Please choose a recipient'); return; }
+      if(!text){ alert('Message cannot be empty'); return; }
+      
+      const toRole = sel.options[sel.selectedIndex].dataset.role || 'farmer';
+      const to = state.recipients.find(r => r.id === toId);
+      const list = loadMessages();
+      
+      const msg = {
+        id: Date.now(),
+        fromId: state.user.id,
+        fromName: (state.user.details?.company_name) || state.user.username,
+        fromRole: 'supplier',
+        toRole: toRole,
+        toId,
+        toName: to?.name || `${toRole.charAt(0).toUpperCase() + toRole.slice(1)} ${toId}`,
+        text,
+        ts: new Date().toISOString(),
+        read: false
+      };
+      
+      list.push(msg);
+      saveMessages(list);
+      ta.value = '';
+      
+      // Update current recipient if needed
+      if (!state.currentRecipient || state.currentRecipient.id !== toId) {
+        state.currentRecipient = {
+          id: toId,
+          name: msg.toName,
+          role: toRole
+        };
+        document.getElementById('current-contact').textContent = msg.toName;
+      }
+      
+      updateContacts();
+      renderMessages();
+      alert('Message sent successfully!');
+
+      // Optional: simulate quick auto-reply
+      setTimeout(()=>{
+        const reply = {
+          id: Date.now()+1,
+          fromId: toId,
+          fromName: msg.toName,
+          fromRole: toRole,
+          toRole: 'supplier',
+          toId: state.user.id,
+          toName: msg.fromName,
+          text: `Thank you for your message. I'll review your products and get back to you soon. ${toRole === 'farmer' ? '🌱' : '📚'}`,
+          ts: new Date().toISOString(),
+          read: false
+        };
+        const l2 = loadMessages(); l2.push(reply); saveMessages(l2); 
+        updateContacts();
+        renderMessages();
+      }, 800);
+    }
+
+    function initializeSampleData() {
+      const user = getCurrentUser();
+      if (!user) return;
+      
+      // Check if messages exist
+      const messages = loadMessages();
+      if (messages.length === 0) {
+        // Add sample messages
+        const sampleMessages = [
+          {
+            id: 1001,
+            fromId: 101, // Farmer
+            fromName: 'Rajesh Kumar',
+            fromRole: 'farmer',
+            toRole: 'supplier',
+            toId: user.id,
+            toName: user.details?.company_name || user.username,
+            text: 'Hello, I need information about your organic fertilizers. Do you have any suitable for tomato crops?',
+            ts: new Date(Date.now() - 86400000 * 2).toISOString(), // 2 days ago
+            read: true
+          },
+          {
+            id: 1002,
+            fromId: user.id,
+            fromName: user.details?.company_name || user.username,
+            fromRole: 'supplier',
+            toRole: 'farmer',
+            toId: 101,
+            toName: 'Rajesh Kumar',
+            text: 'Yes, we have several organic fertilizers perfect for tomatoes. Our "TomatoBoost" product is specifically formulated for nightshade plants.',
+            ts: new Date(Date.now() - 86400000 * 1.9).toISOString(),
+            read: true
+          },
+          {
+            id: 1003,
+            fromId: 101,
+            fromName: 'Rajesh Kumar',
+            fromRole: 'farmer',
+            toRole: 'supplier',
+            toId: user.id,
+            toName: user.details?.company_name || user.username,
+            text: 'That sounds perfect. What is the price and how much do I need per acre?',
+            ts: new Date(Date.now() - 86400000 * 1.8).toISOString(),
+            read: true
+          },
+          {
+            id: 1004,
+            fromId: 102, // Expert
+            fromName: 'Dr. Priya Singh',
+            fromRole: 'expert',
+            toRole: 'supplier',
+            toId: user.id,
+            toName: user.details?.company_name || user.username,
+            text: 'I\'m researching sustainable agricultural inputs for a publication. Can you provide information about your eco-friendly product line?',
+            ts: new Date(Date.now() - 86400000 * 1).toISOString(),
+            read: false
+          }
+        ];
+        
+        saveMessages(sampleMessages);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', async ()=>{
+      if(!protectPage('supplier')) return;
+      state.user = getCurrentUser();
+      
+      // Initialize sample data
+      initializeSampleData();
+      
+      await loadRecipients();
+      renderMessages();
+      
+      document.getElementById('sendBtn').addEventListener('click', sendMessage);
+      
+      // Set first contact as active if available
+      if (state.contacts.length > 0 && !state.currentRecipient) {
+        const firstContact = state.contacts[0];
+        state.currentRecipient = firstContact;
+        document.getElementById('current-contact').textContent = firstContact.name;
+        document.getElementById('recipient').value = firstContact.id;
+        renderMessages();
+        
+        // Mark as active
+        const firstContactEl = document.querySelector('.contact-item');
+        if (firstContactEl) {
+          firstContactEl.classList.add('active');
+        }
+      }
+    });
+  </script>
+</body>
+</html>
