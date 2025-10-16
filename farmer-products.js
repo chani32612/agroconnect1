@@ -282,7 +282,7 @@ function handleLogout() {
     
     // Redirect to login page after a short delay
     setTimeout(() => {
-      window.location.href = 'login.html';
+      window.location.href = '/html_files/auth/login.html';
     }, 1500);
   }
 }
@@ -292,7 +292,7 @@ function displayFarmerUserInfo() {
   const user = getCurrentUser();
   if (!user) {
     // Redirect to login if no user
-    window.location.href = 'login.html';
+    window.location.href = '/html_files/auth/login.html';
     return;
   }
   
@@ -332,7 +332,7 @@ function displayFarmerUserInfo() {
 function checkFarmerAuthentication() {
   const user = getCurrentUser();
   if (!user) {
-    window.location.href = 'login.html';
+    window.location.href = '/html_files/auth/login.html';
     return false;
   }
   
@@ -340,16 +340,16 @@ function checkFarmerAuthentication() {
     // Redirect to appropriate dashboard based on role
     switch(user.role) {
       case 'consumer':
-        window.location.href = 'consumer-dashboard.html';
+        window.location.href = '/html_files/consumer/consumer-dashboard.html';
         break;
       case 'supplier':
-        window.location.href = 'supplier-dashboard.html';
+        window.location.href = '/html_files/supplier/supplier-dashboard.html';
         break;
       case 'expert':
-        window.location.href = 'expert-dashboard.html';
+        window.location.href = '/html_files/expert/expert-dashboard.html';
         break;
       default:
-        window.location.href = 'login.html';
+        window.location.href = '/html_files/auth/login.html';
     }
     return false;
   }

@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login to AgroConnect</title>
+  <style>
+    body {
+      background-color: #f7f6ea;
+      color: #375432;
+      font-family: 'Georgia', serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      position: relative;
+    }
+    
+    /* Decorative fruit images */
+    .fruit-images {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .fruit-img {
+      position: absolute;
+      opacity: 0.93;
+      animation: float 6s ease-in-out infinite;
+    }
+    .fruit1 { left: 60px; top: 35px; width: 60px; animation-delay: 0s;}
+    .fruit2 { right: 80px; top: 48px; width: 60px; animation-delay: 1s;}
+    .fruit3 { left: 17px; bottom: 80px; width: 70px; animation-delay: 2s;}
+    .fruit4 { right: 45px; bottom: 65px; width: 70px; animation-delay: 3s;}
+    .fruit5 { left: 32px; top: 230px; width: 60px; animation-delay: 4s;}
+    .fruit6 { right: 56px; top: 260px; width: 55px; animation-delay: 5s;}
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      25% { transform: translateY(-10px) rotate(2deg); }
+      50% { transform: translateY(-5px) rotate(-1deg); }
+      75% { transform: translateY(-15px) rotate(1deg); }
+    }
+    
+    @keyframes slideInUp {
+      from {
+        opacity: 0;
+        transform: translateY(50px) scale(0.9);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    
+    .container {
+      background: white;
+      padding: 60px 50px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(55, 84, 50, 0.1);
+      max-width: 400px;
+      width: 100%;
+      margin: 0 auto;
+      text-align: center;
+      position: relative;
+      z-index: 2;
+      border: 2px solid #f3f2e7;
+      animation: slideInUp 0.8s ease-out;
+    }
+    .main-title {
+      font-size: 2.5em;
+      font-weight: bold;
+      color: #375432;
+      margin: 0 0 10px 0;
+      line-height: 1.2;
+    }
+    .subtitle {
+      font-size: 1.1em;
+      color: #375432;
+      margin: 0 0 40px 0;
+      font-weight: 400;
+      opacity: 0.8;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      text-align: left;
+    }
+    label {
+      margin-bottom: 8px;
+      font-size: 16px;
+      color: #375432;
+      font-weight: 500;
+    }
+    input[type="text"], input[type="email"], input[type="password"] {
+      margin-bottom: 24px;
+      padding: 16px;
+      border-radius: 5px;
+      border: 2px solid #f3f2e7;
+      font-size: 16px;
+      font-family: 'Georgia', serif;
+      transition: border-color 0.3s;
+      background: #fff;
+    }
+    input[type="text"]::placeholder, input[type="email"]::placeholder, input[type="password"]::placeholder {
+      color: #999;
+    }
+    input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus {
+      outline: none;
+      border-color: #375432;
+    }
+    button {
+      background: #375432;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 16px 0;
+      font-size: 18px;
+      font-family: 'Georgia', serif;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-bottom: 24px;
+      transform: translateY(0);
+    }
+    button:hover {
+      background: #20301d;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(55, 84, 50, 0.3);
+    }
+    button:active {
+      transform: translateY(0);
+    }
+    .forgot-password {
+      text-align: center;
+      color: #375432;
+      text-decoration: none;
+      font-size: 16px;
+      margin-bottom: 24px;
+      display: block;
+    }
+    .forgot-password:hover {
+      text-decoration: underline;
+    }
+    .signup-link {
+      text-align: center;
+      color: #375432;
+      font-size: 16px;
+      opacity: 0.8;
+    }
+    .signup-link a {
+      color: #375432;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    .signup-link a:hover {
+      text-decoration: underline;
+    }
+    .message {
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      border-radius: 5px;
+      font-size: 14px;
+      font-weight: 500;
+      text-align: center;
+    }
+    .message.success {
+      background-color: #e8f5e8;
+      color: #375432;
+      border: 1px solid #375432;
+    }
+    .message.error {
+      background-color: #f8e8e8;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .message.info {
+      background-color: #e8f0f8;
+      color: #375432;
+      border: 1px solid #375432;
+    }
+    
+    @media (max-width: 600px) {
+      .fruit-images { display: none; }
+    }
+  </style>
+  <script>
+    let userData = null;
+
+    // Load user data from JSON file
+    async function loadUserData() {
+      try {
+        const response = await fetch('/dataa.json');
+        userData = await response.json();
+        console.log('User data loaded successfully');
+      } catch (error) {
+        console.error('Error loading user data:', error);
+        showMessage('Error loading user data. Please try again.', 'error');
+      }
+    }
+
+    function toggleForms() {
+      var signIn = document.getElementById('signInForm');
+      var signUp = document.getElementById('signUpForm');
+      signIn.style.display = signIn.style.display === 'none' ? 'block' : 'none';
+      signUp.style.display = signUp.style.display === 'block' ? 'none' : 'block';
+      clearMessages();
+    }
+
+    // Get role from URL parameters
+    function getRole() {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get('role') || null;
+    }
+
+    // Capitalize first letter of role
+    function capitalizeRole(role) {
+      return role.charAt(0).toUpperCase() + role.slice(1);
+    }
+
+    // Show message to user
+    function showMessage(message, type = 'info') {
+      clearMessages();
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${type}`;
+      messageDiv.textContent = message;
+      
+      const container = document.querySelector('.container');
+      container.insertBefore(messageDiv, container.firstChild);
+      
+      // Auto-hide success messages after 3 seconds
+      if (type === 'success') {
+        setTimeout(() => {
+          messageDiv.remove();
+        }, 3000);
+      }
+    }
+
+    // Clear all messages
+    function clearMessages() {
+      const messages = document.querySelectorAll('.message');
+      messages.forEach(msg => msg.remove());
+    }
+
+    // Update page content based on role
+    function updatePageForRole() {
+      const role = getRole();
+      
+      if (role) {
+        const capitalizedRole = capitalizeRole(role);
+        
+        // Update sign in form
+        const signInTitle = document.getElementById('signInTitle');
+        const signInSubtitle = document.getElementById('signInSubtitle');
+        signInTitle.innerHTML = `Login to AgroConnect<br><span style="color: #6c9f6c; font-size: 0.8em;">as ${capitalizedRole}</span>`;
+        signInSubtitle.textContent = `Access your ${role} account to continue`;
+        
+        // Update sign up form
+        const signUpTitle = document.getElementById('signUpTitle');
+        const signUpSubtitle = document.getElementById('signUpSubtitle');
+        signUpTitle.innerHTML = `Sign Up for AgroConnect<br><span style="color: #6c9f6c; font-size: 0.8em;">as ${capitalizedRole}</span>`;
+        signUpSubtitle.textContent = `Create your ${role} account to get started`;
+      } else {
+        // Generic login page
+        const signInTitle = document.getElementById('signInTitle');
+        const signInSubtitle = document.getElementById('signInSubtitle');
+        signInTitle.innerHTML = `Login to AgroConnect`;
+        signInSubtitle.textContent = `Access your account to continue`;
+      }
+    }
+
+    // Validate user credentials
+    function validateCredentials(usernameOrEmail, password) {
+      if (!userData || !userData.users) {
+        return null;
+      }
+
+      // Find user by username or email
+      const user = userData.users.find(u => 
+        (u.username === usernameOrEmail || u.email === usernameOrEmail) && 
+        u.password === password
+      );
+
+      return user;
+    }
+
+    // Get user details by role and user_id
+    function getUserDetails(user) {
+      const role = user.role;
+      const userId = user.id;
+
+      switch(role) {
+        case 'farmer':
+          return userData.farmers.find(f => f.user_id === userId);
+        case 'consumer':
+          return userData.consumers.find(c => c.user_id === userId);
+        case 'expert':
+          return userData.experts.find(e => e.user_id === userId);
+        case 'supplier':
+          return userData.suppliers.find(s => s.user_id === userId);
+        default:
+          return null;
+      }
+    }
+
+    // Handle sign in
+    async function handleSignIn(event) {
+      event.preventDefault();
+      clearMessages();
+      
+      const username = document.getElementById('signin-username').value.trim();
+      const password = document.getElementById('signin-password').value;
+      
+      if (!username || !password) {
+        showMessage('Please enter both username/email and password.', 'error');
+        return;
+      }
+
+      // Ensure user data is loaded
+      if (!userData) {
+        await loadUserData();
+      }
+
+      // Validate credentials
+      const user = validateCredentials(username, password);
+      
+      if (user) {
+        // Get additional user details
+        const userDetails = getUserDetails(user);
+        
+        // Store user information in localStorage
+        localStorage.setItem('currentUser', JSON.stringify({
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+          details: userDetails
+        }));
+        
+        showMessage(`Welcome back, ${userDetails?.full_name || userDetails?.company_name || user.username}!`, 'success');
+        
+        // Redirect based on role after a short delay
+        setTimeout(() => {
+          switch(user.role) {
+            case 'farmer':
+              window.location.href = '/html_files/farmer/farmer-dashboard.html';
+              break;
+            case 'consumer':
+              window.location.href = '/html_files/consumer/consumer-dashboard.html';
+              break;
+            case 'supplier':
+              window.location.href = '/html_files/supplier/supplier-dashboard.html';
+              break;
+            case 'expert':
+              window.location.href = '/html_files/expert/expert-dashboard.html';
+              break;
+            default:
+              window.location.href = '/html_files/index.html';
+          }
+        }, 1500);
+      } else {
+        showMessage('Invalid username/email or password. Please try again.', 'error');
+      }
+    }
+
+    // Handle sign up (placeholder - would need to add to JSON in real implementation)
+    function handleSignUp(event) {
+      event.preventDefault();
+      clearMessages();
+      
+      const name = document.getElementById('signup-name').value.trim();
+      const email = document.getElementById('signup-email').value.trim();
+      const password = document.getElementById('signup-password').value;
+      
+      if (!name || !email || !password) {
+        showMessage('Please fill in all fields.', 'error');
+        return;
+      }
+
+      // In a real implementation, you would add the user to the JSON file
+      // For now, just show a message
+      showMessage('Sign up functionality would be implemented with a backend. Please use existing credentials to login.', 'info');
+    }
+
+    // Initialize page when loaded
+    window.addEventListener('DOMContentLoaded', async () => {
+      await loadUserData();
+      updatePageForRole();
+    });
+  </script>
+</head>
+<body>
+  <!-- Decorative fruit images -->
+  <div class="fruit-images">
+    <img src="/images/cherries.png" alt="Cherries" class="fruit-img fruit1"/>
+    <img src="/images/peach.png" alt="Pear" class="fruit-img fruit2"/>
+    <img src="/images/cherries.png" alt="Orange" class="fruit-img fruit3"/>
+    <img src="/images/peach.png" alt="Peach" class="fruit-img fruit4"/>
+    <img src="/images/cherries.png" alt="Papaya" class="fruit-img fruit5"/>
+    <img src="/images/peach.png" alt="Grapes" class="fruit-img fruit6"/>
+  </div>
+  
+  <div class="container">
+    <div id="signInForm">
+      <h1 class="main-title" id="signInTitle">Login to<br>AgroConnect</h1>
+      <p class="subtitle" id="signInSubtitle">Access your account to continue</p>
+      <form onsubmit="handleSignIn(event)">
+        <label for="signin-username">Email or Username</label>
+        <input type="text" id="signin-username" name="signin-username" placeholder="Enter your email or username" required />
+        <label for="signin-password">Password</label>
+        <input type="password" id="signin-password" name="signin-password" placeholder="Enter your password" required />
+        <button type="submit">Login</button>
+      </form>
+      <a href="#" class="forgot-password">Forgot password?</a>
+      <div class="signup-link">Don't have an account? <a href="#" onclick="toggleForms()">Sign up</a></div>
+    </div>
+    <div id="signUpForm" style="display: none;">
+      <h1 class="main-title" id="signUpTitle">Sign Up for<br>AgroConnect</h1>
+      <p class="subtitle" id="signUpSubtitle">Create your account to get started</p>
+      <form onsubmit="handleSignUp(event)">
+        <label for="signup-name">Full Name</label>
+        <input type="text" id="signup-name" name="signup-name" placeholder="Enter your full name" required />
+        <label for="signup-email">Email</label>
+        <input type="email" id="signup-email" name="signup-email" placeholder="Enter your email" required />
+        <label for="signup-password">Password</label>
+        <input type="password" id="signup-password" name="signup-password" placeholder="Create a password" required />
+        <button type="submit">Sign Up</button>
+      </form>
+      <div class="signup-link">Already have an account? <a href="#" onclick="toggleForms()">Sign in</a></div>
+    </div>
+  </div>
+</body>
+</html>

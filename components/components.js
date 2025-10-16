@@ -44,7 +44,8 @@ function initConsumerNavActive() {
     const href = a.getAttribute('href');
     if (!href) return;
     // Consider both exact and folder index matches
-    if (current === href || (current.endsWith('/') && current.slice(0, -1) === href)) {
+    const normalizedHref = new URL(href, window.location.href).pathname;
+    if (current === normalizedHref || (current.endsWith('/') && current.slice(0, -1) === normalizedHref)) {
       a.classList.add('active');
     } else {
       a.classList.remove('active');
@@ -66,7 +67,7 @@ function initLogoutButtons() {
       } else {
         // Fallback: clear and go home
         localStorage.removeItem('currentUser');
-        window.location.href = '/login.html';
+        window.location.href = '/html_files/auth/login.html';
       }
     });
   });
@@ -77,4 +78,24 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', includeComponents);
 } else {
   includeComponents();
+}
+
+async function loadSidebar(role) {
+  const sidebarPlaceholder = document.getElementById('sidebar-placeholder');
+  if (sidebarPlaceholder) {
+    try {
+      const response = await fetch(`/components/sidebar-${role}.html`);
+      if (response.ok) {
+        sidebarPlaceholder.innerHTML = await response.text();
+        // Re-initialize scripts that might be in the sidebar
+        initHeaderUser();
+        if (role === 'consumer') initConsumerNavActive(); // This will handle active state for consumer nav
+        initLogoutButtons();
+      } else {
+        console.error(`Failed to load sidebar for ${role}:`, response.statusText);
+      }
+    } catch (e) {
+      console.error(`Error loading sidebar for ${role}:`, e);
+    }
+  }
 }

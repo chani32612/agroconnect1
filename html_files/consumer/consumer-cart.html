@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgroConnect - Shopping Cart</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
+    <script src="/auth.js"></script>
+    <script src="/consumer-products.js"></script>
+    <script src="/components/components.js"></script>
+    <style>
+        body { font-family: 'Georgia', serif; background: #f7f6ea; color: #375432; margin: 0; display: flex; flex-direction: column; min-height: 100vh; }
+        .main-content { flex: 1; margin-left: 235px; padding: 36px 42px 30px; background: #f7f6ea; position: relative; z-index: 5; animation: fadeInRight .8s ease-out .2s both; }
+        .cart-container { background: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); padding: 30px; max-width: 900px; margin: 40px auto; }
+        .cart-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 20px; }
+        .cart-header h2 { color: #375432; font-size: 2em; margin: 0; }
+        .cart-items { margin-bottom: 30px; }
+        .cart-item { display: flex; align-items: center; padding: 20px 0; border-bottom: 1px solid #eee; }
+        .cart-item:last-child { border-bottom: none; }
+        .item-image { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; margin-right: 20px; }
+        .item-details { flex-grow: 1; }
+        .item-details h3 { margin: 0 0 5px 0; color: #375432; font-size: 1.2em; }
+        .item-details p { margin: 0; color: #666; font-size: 0.9em; }
+        .item-quantity-controls { display: flex; align-items: center; }
+        .item-quantity-controls button { background: #e6fbe3; color: #25632a; border: 1px solid #98e59d; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 1em; margin: 0 5px; }
+        .item-quantity-controls button:hover { background: #25632a; color: #fff; }
+        .item-price { font-weight: bold; color: #36b94a; font-size: 1.1em; width: 100px; text-align: right; }
+        .cart-summary { border-top: 2px solid #eee; padding-top: 20px; text-align: right; }
+        .cart-summary p { font-size: 1.2em; font-weight: bold; color: #375432; margin: 5px 0; }
+        .checkout-btn { background: #408a46; color: #fff; border: none; padding: 15px 30px; border-radius: 8px; font-size: 1.2em; cursor: pointer; transition: background 0.3s ease; margin-top: 20px; }
+        .checkout-btn:hover { background: #25632a; }
+        .empty-cart-message { text-align: center; padding: 50px; color: #666; }
+        @media (max-width: 768px) {
+            .main-content { margin-left: 0; padding: 20px; }
+            .cart-item { flex-direction: column; align-items: flex-start; }
+            .item-image { margin-bottom: 10px; }
+            .item-quantity-controls { margin-top: 10px; }
+            .item-price { width: auto; text-align: left; margin-top: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar-placeholder"></div>
+    <main class="main-content">
+        <div class="cart-container">
+            <div class="cart-header">
+                <h2>Your Shopping Cart</h2>
+                <button class="checkout-btn" onclick="checkout()">Proceed to Checkout</button>
+            </div>
+            <div class="cart-items" id="cart-items-container">
+                <!-- Cart items will be loaded here by JavaScript -->
+            </div>
+            <div class="cart-summary">
+                <p>Total: <span id="cart-total">₹0.00</span></p>
+                <button class="checkout-btn" onclick="checkout()">Proceed to Checkout</button>
+            </div>
+            <div class="empty-cart-message" id="empty-cart-message" style="display: none;">
+                <p>Your cart is empty. Start shopping now!</p>
+                <a href="consumer-dashboard.html" class="checkout-btn" style="text-decoration: none;">Browse Products</a>
+            </div>
+        </div>
+    </main>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSidebar('consumer');
+            displayCartItems();
+        });
+
+        function displayCartItems() {
+            const currentUser = getCurrentUser();
+            if (!currentUser) {
+                document.getElementById('empty-cart-message').style.display = 'block';
+                document.querySelector('.cart-summary').style.display = 'none';
+                document.querySelector('.cart-header').style.display = 'none';
+                return;
+            }
+
+            const cartKey = `cart_${currentUser.id}`;
+            const cart = JSON.parse(localStorage.getItem(cartKey) || '[]');
+            const cartItemsContainer = document.getElementById('cart-items-container');
+            let cartTotal = 0;
+
+            cartItemsContainer.innerHTML = ''; // Clear existing items
+
+            if (cart.length === 0) {
+                document.getElementById('empty-cart-message').style.display = 'block';
+                document.querySelector('.cart-summary').style.display = 'none';
+                document.querySelector('.cart-header').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('empty-cart-message').style.display = 'none';
+            document.querySelector('.cart-summary').style.display = 'block';
+            document.querySelector('.cart-header').style.display = 'flex';
+
+            cart.forEach(item => {
+                const itemTotal = item.price * item.quantity;
+                cartTotal += itemTotal;
+
+                const cartItemDiv = document.createElement('div');
+                cartItemDiv.classList.add('cart-item');
+                cartItemDiv.innerHTML = `
+                    <img src="/images/cherries.png" alt="${item.productName}" class="item-image">
+                    <div class="item-details">
+                        <h3>${item.productName}</h3>
+                        <p>Price: ₹${item.price} / ${item.unit}</p>
+                        <p>Farmer: ${item.farmerName}</p>
+                    </div>
+                    <div class="item-quantity-controls">
+                        <button onclick="updateCartItemQuantity(${item.productId}, ${item.farmerId}, -1)">-</button>
+                        <span>${item.quantity}</span>
+                        <button onclick="updateCartItemQuantity(${item.productId}, ${item.farmerId}, 1)">+</button>
+                    </div>
+                    <div class="item-price">₹${itemTotal.toFixed(2)}</div>
+                    <button onclick="removeCartItem(${item.productId}, ${item.farmerId})" style="background: none; border: none; color: #dc3545; font-size: 1.2em; cursor: pointer; margin-left: 20px;">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+                cartItemsContainer.appendChild(cartItemDiv);
+            });
+
+            document.getElementById('cart-total').textContent = `₹${cartTotal.toFixed(2)}`;
+        }
+
+        function updateCartItemQuantity(productId, farmerId, change) {
+            const currentUser = getCurrentUser();
+            if (!currentUser) return;
+
+            const cartKey = `cart_${currentUser.id}`;
+            const cart = JSON.parse(localStorage.getItem(cartKey) || '[]');
+            const itemIndex = cart.findIndex(item => item.productId === productId && item.farmerId === farmerId);
+
+            if (itemIndex > -1) {
+                cart[itemIndex].quantity += change;
+                if (cart[itemIndex].quantity <= 0) {
+                    cart.splice(itemIndex, 1); // Remove item if quantity is 0 or less
+                }
+                localStorage.setItem(cartKey, JSON.stringify(cart));
+                displayCartItems(); // Re-render cart
+            }
+        }
+
+        function removeCartItem(productId, farmerId) {
+            const currentUser = getCurrentUser();
+            if (!currentUser) return;
+
+            const cartKey = `cart_${currentUser.id}`;
+            let cart = JSON.parse(localStorage.getItem(cartKey) || '[]');
+            cart = cart.filter(item => !(item.productId === productId && item.farmerId === farmerId));
+            localStorage.setItem(cartKey, JSON.stringify(cart));
+            displayCartItems(); // Re-render cart
+        }
+
+        function checkout() {
+            const currentUser = getCurrentUser();
+            if (!currentUser) {
+                showConsumerNotification('Please login to checkout!', 'error');
+                return;
+            }
+
+            const cartKey = `cart_${currentUser.id}`;
+            const cart = JSON.parse(localStorage.getItem(cartKey) || '[]');
+
+            if (cart.length === 0) {
+                showConsumerNotification('Your cart is empty!', 'error');
+                return;
+            }
+
+            // For now, just clear the cart and show a success message
+            // In a real application, this would involve payment processing, order creation, etc.
+            localStorage.removeItem(cartKey);
+            showConsumerNotification('Checkout successful! Your order has been placed.', 'success');
+            displayCartItems(); // Clear the displayed cart
+        }
+    </script>
+</body>
+</html>

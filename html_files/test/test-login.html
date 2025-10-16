@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login System Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        .credentials {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 AgroConnect Login System Test</h1>
+    
+    <div class="test-container">
+        <h2>📋 Test Credentials</h2>
+        <div class="credentials">
+            <strong>Farmer:</strong> farmer101 / hash1<br>
+            <strong>Consumer:</strong> consumer_jane / hash2<br>
+            <strong>Expert:</strong> expert_rk / hash3<br>
+            <strong>Supplier:</strong> supplymax / hash4
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>🔍 System Tests</h2>
+        <button onclick="testDataLoading()">Test Data Loading</button>
+        <button onclick="testCredentialValidation()">Test Credential Validation</button>
+        <button onclick="testAllUsers()">Test All Users</button>
+        <button onclick="clearResults()">Clear Results</button>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-container">
+        <h2>🚀 Quick Access</h2>
+        <button onclick="window.open('../index.html', '_blank')">Open Main App</button>
+        <button onclick="window.open('login.html', '_blank')">Open Login Page</button>
+        <button onclick="window.open('login.html?role=farmer', '_blank')">Login as Farmer</button>
+        <button onclick="window.open('login.html?role=supplier', '_blank')">Login as Supplier</button>
+    </div>
+
+    <script>
+        let userData = null;
+
+        async function loadUserData() {
+            try {
+                const response = await fetch('dataa.json');
+                userData = await response.json();
+                return true;
+            } catch (error) {
+                console.error('Error loading user data:', error);
+                return false;
+            }
+        }
+
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('test-results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.textContent = message;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        function clearResults() {
+            document.getElementById('test-results').innerHTML = '';
+        }
+
+        async function testDataLoading() {
+            addResult('🔄 Testing data loading...', 'info');
+            
+            const success = await loadUserData();
+            
+            if (success && userData) {
+                addResult(`✅ Data loaded successfully! Found ${userData.users.length} users.`, 'success');
+                addResult(`📊 Users by role: ${userData.users.map(u => u.role).join(', ')}`, 'info');
+            } else {
+                addResult('❌ Failed to load user data!', 'error');
+            }
+        }
+
+        function validateCredentials(usernameOrEmail, password) {
+            if (!userData || !userData.users) {
+                return null;
+            }
+
+            return userData.users.find(u => 
+                (u.username === usernameOrEmail || u.email === usernameOrEmail) && 
+                u.password === password
+            );
+        }
+
+        async function testCredentialValidation() {
+            if (!userData) {
+                await loadUserData();
+            }
+
+            addResult('🔐 Testing credential validation...', 'info');
+
+            // Test valid credentials
+            const validUser = validateCredentials('farmer101', 'hash1');
+            if (validUser) {
+                addResult('✅ Valid credentials test passed!', 'success');
+            } else {
+                addResult('❌ Valid credentials test failed!', 'error');
+            }
+
+            // Test invalid credentials
+            const invalidUser = validateCredentials('wronguser', 'wrongpass');
+            if (!invalidUser) {
+                addResult('✅ Invalid credentials test passed!', 'success');
+            } else {
+                addResult('❌ Invalid credentials test failed!', 'error');
+            }
+
+            // Test email login
+            const emailUser = validateCredentials('farmer101@email.com', 'hash1');
+            if (emailUser) {
+                addResult('✅ Email login test passed!', 'success');
+            } else {
+                addResult('❌ Email login test failed!', 'error');
+            }
+        }
+
+        async function testAllUsers() {
+            if (!userData) {
+                await loadUserData();
+            }
+
+            addResult('👥 Testing all user credentials...', 'info');
+
+            const testCases = [
+                { username: 'farmer101', password: 'hash1', role: 'farmer' },
+                { username: 'consumer_jane', password: 'hash2', role: 'consumer' },
+                { username: 'expert_rk', password: 'hash3', role: 'expert' },
+                { username: 'supplymax', password: 'hash4', role: 'supplier' }
+            ];
+
+            let passed = 0;
+            let total = testCases.length;
+
+            for (const testCase of testCases) {
+                const user = validateCredentials(testCase.username, testCase.password);
+                if (user && user.role === testCase.role) {
+                    addResult(`✅ ${testCase.role.toUpperCase()}: ${testCase.username} login works`, 'success');
+                    passed++;
+                } else {
+                    addResult(`❌ ${testCase.role.toUpperCase()}: ${testCase.username} login failed`, 'error');
+                }
+            }
+
+            addResult(`📊 Test Summary: ${passed}/${total} users can login successfully`, 
+                     passed === total ? 'success' : 'error');
+        }
+
+        // Auto-run basic test on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            addResult('🚀 Starting automatic tests...', 'info');
+            await testDataLoading();
+            if (userData) {
+                await testCredentialValidation();
+            }
+        });
+    </script>
+</body>
+</html>

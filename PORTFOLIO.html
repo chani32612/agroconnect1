@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=800px, initial-scale=0">
+    <title>Portfolio - V. Chanakya</title>
+    <style>
+        body {
+            background-color: #ffffff;
+            font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+            margin: 0 auto;
+            padding: 32px 48px;
+            width: 800px;
+            min-height: 1120px;
+            box-shadow: 0 0 8px rgba(0,0,0,0.1);
+            line-height: 1.4;
+            color: #3c4043;
+        }
+        h1 {
+            color: #202124;
+            font-weight: 500;
+            margin: 24px 0 12px;
+            font-size: 18px;
+        }
+        h3 {
+            margin: 8px 0;
+            color: #5f6368;
+            font-weight: 400;
+            font-size: 16px;
+        }
+        p {
+            text-align: right;
+            color: #70757a;
+            margin: 8px 0;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 6px 0 18px;
+        }
+        li {
+            margin: 6px 0;
+            padding: 3px 0;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        li:hover {
+            transform: translateX(4px);
+            color: #1a73e8;
+        }
+        hr {
+            border: none;
+            height: 1px;
+            background-color: #e0e0e0;
+            margin: 18px 0;
+            width: 100%;
+        }
+        .button-container {
+            text-align: right;
+            margin: 40px 0 20px;
+            padding-right: 20px;
+        }
+        .next-button {
+            padding: 10px 24px;
+            font-size: 14px;
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.08s;
+        }
+        .next-button:hover {
+            background-color: #2b7de9;
+            box-shadow: 0 1px 2px 0 rgba(66,133,244,0.3),
+                        0 1px 3px 1px rgba(66,133,244,0.15);
+        }
+        .skill-details {
+            border-left: 2px solid #1a73e8;
+            padding-left: 12px;
+            margin-left: 8px;
+            transition: all 0.3s;
+        }
+        .skill-details p {
+            text-align: left;
+            margin: 6px 0;
+            color: #5f6368;
+        }
+    </style>
+<script>
+function toggleDetails(id) {
+    const element = document.getElementById(id);
+    element.style.display = element.style.display === 'none' ? 'block' : 'none';
+}
+</script>
+</head>
+<body>
+    <h1>V. Chanakya's Portfolio</h1>
+    <p>Contact: XXXXXXXXXX</p>
+    <hr>
+    <h1>Links where you can find me:</h1>
+    <ul>
+        <li><h3><b>Mail:</b> 23EG107F60@anurag.edu.in</h3></li>
+        <li><h3><b>LinkedIn:</b> LINK</h3></li>
+        <li><h3><b>GitHub:</b> LINK</h3></li>
+        <li><h3><b>Location:</b> Hyderabad, Telangana</h3></li>
+    </ul>
+    <hr>
+    <h1>Education:</h1>
+    <ul>
+        <li><h3><b>Tenth:</b> GIIS</h3></li>
+        <li><h3><b>Intermediate:</b> Sri Chaitanya</h3></li>
+        <li><h3><b>B.Tech:</b> Anurag University</h3></li>
+    </ul>
+    <hr>
+    <h1>Skills:</h1>
+    <ul>
+        <li onclick="toggleDetails('prog-langs')">
+            <h3><b>Programming Languages:</b> C, Python, Java, CSS3 ▼</h3>
+            <div id="prog-langs" class="skill-details" style="display:none;">
+                <p>C: Systems programming experience</p>
+                <p>Python: Data analysis, automation</p>
+                <p>Java: OOP fundamentals</p>
+                <p>CSS3: Responsive design</p>
+            </div>
+        </li>
+        <li onclick="toggleDetails('web-dev')">
+            <h3><b>Web Development:</b> HTML, CSS, React, Node.js ▼</h3>
+            <div id="web-dev" class="skill-details" style="display:none;">
+                <p>HTML5: Semantic markup</p>
+                <p>CSS3: Flexbox, Grid</p>
+                <p>React: Component-based</p>
+                <p>Node.js: Backend APIs</p>
+            </div>
+        </li>
+        <li onclick="toggleDetails('databases')">
+            <h3><b>Databases:</b> MySQL, MongoDB ▼</h3>
+            <div id="databases" class="skill-details" style="display:none;">
+                <p>MySQL: Relational DB design</p>
+                <p>MongoDB: NoSQL experience</p>
+            </div>
+        </li>
+    </ul>
+    <div class="button-container">
+        <a href="second.html" style="text-decoration: none;">
+            <button class="next-button">Next Page</button>
+        </a>
+    </div>
+</body>
+</html>

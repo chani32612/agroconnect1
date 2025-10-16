@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgroConnect - My Orders</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
+    <script src="/auth.js"></script>
+    <script src="/consumer-products.js"></script>
+    <script src="/components/components.js"></script>
+    <style>
+        body { font-family: 'Georgia', serif; background: #f7f6ea; color: #375432; margin: 0; display: flex; flex-direction: column; min-height: 100vh; }
+        .main-content { flex: 1; margin-left: 235px; padding: 36px 42px 30px; background: #f7f6ea; position: relative; z-index: 5; animation: fadeInRight .8s ease-out .2s both; }
+        .orders-container { background: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); padding: 30px; max-width: 900px; margin: 40px auto; }
+        .orders-header { border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 20px; }
+        .orders-header h2 { color: #375432; font-size: 2em; margin: 0; }
+        .order-card { background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 10px; margin-bottom: 20px; padding: 20px; }
+        .order-card h3 { margin-top: 0; color: #375432; font-size: 1.5em; }
+        .order-details { display: flex; justify-content: space-between; margin-bottom: 15px; }
+        .order-details p { margin: 0; font-size: 0.95em; color: #555; }
+        .order-items { border-top: 1px solid #eee; padding-top: 15px; }
+        .order-item { display: flex; align-items: center; margin-bottom: 10px; }
+        .order-item img { width: 60px; height: 60px; object-fit: cover; border-radius: 5px; margin-right: 15px; }
+        .item-info { flex-grow: 1; }
+        .item-info p { margin: 0; font-size: 0.9em; color: #444; }
+        .item-info .product-name { font-weight: bold; }
+        .empty-orders-message { text-align: center; padding: 50px; color: #666; }
+        @media (max-width: 768px) {
+            .main-content { margin-left: 0; padding: 20px; }
+            .order-details { flex-direction: column; }
+            .order-details p { margin-bottom: 5px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar-placeholder"></div>
+    <main class="main-content">
+        <div class="orders-container">
+            <div class="orders-header">
+                <h2>My Orders</h2>
+            </div>
+            <div class="orders-list" id="orders-list-container">
+                <!-- Orders will be loaded here by JavaScript -->
+            </div>
+            <div class="empty-orders-message" id="empty-orders-message" style="display: none;">
+                <p>You haven't placed any orders yet.</p>
+                <a href="consumer-dashboard.html" class="checkout-btn" style="text-decoration: none;">Browse Products</a>
+            </div>
+        </div>
+    </main>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSidebar('consumer');
+            displayConsumerOrders();
+        });
+
+        function displayConsumerOrders() {
+            const currentUser = getCurrentUser();
+            if (!currentUser) {
+                document.getElementById('empty-orders-message').style.display = 'block';
+                return;
+            }
+
+            const ordersKey = `orders_${currentUser.id}`;
+            const orders = JSON.parse(localStorage.getItem(ordersKey) || '[]');
+            const ordersListContainer = document.getElementById('orders-list-container');
+
+            ordersListContainer.innerHTML = ''; // Clear existing orders
+
+            if (orders.length === 0) {
+                document.getElementById('empty-orders-message').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('empty-orders-message').style.display = 'none';
+
+            orders.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate)); // Newest first
+
+            orders.forEach(order => {
+                const orderCardDiv = document.createElement('div');
+                orderCardDiv.classList.add('order-card');
+                orderCardDiv.innerHTML = `
+                    <h3>Order ID: ${order.id}</h3>
+                    <div class="order-details">
+                        <p><strong>Date:</strong> ${new Date(order.orderDate).toLocaleDateString()}</p>
+                        <p><strong>Total:</strong> ₹${order.total.toFixed(2)}</p>
+                        <p><strong>Status:</strong> ${order.status}</p>
+                    </div>
+                    <div class="order-items">
+                        <h4>Items:</h4>
+                        ${order.items.map(item => `
+                            <div class="order-item">
+                                <img src="/images/cherries.png" alt="${item.productName}">
+                                <div class="item-info">
+                                    <p class="product-name">${item.productName} x ${item.quantity}</p>
+                                    <p>₹${item.price.toFixed(2)} each</p>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                ordersListContainer.appendChild(orderCardDiv);
+            });
+        }
+    </script>
+</body>
+</html>

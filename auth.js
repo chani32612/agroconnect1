@@ -20,7 +20,7 @@ function hasRole(role) {
 // Logout user
 function logout() {
   localStorage.removeItem('currentUser');
-  window.location.href = 'index.html';
+  window.location.href = '/html_files/index.html';
 }
 
 // Protect page - redirect to login if not authenticated
@@ -29,7 +29,7 @@ function protectPage(requiredRole = null) {
   
   if (!user) {
     // Not logged in, redirect to login
-    window.location.href = 'login.html';
+    window.location.href = '/html_files/auth/login.html';
     return false;
   }
   
@@ -37,19 +37,23 @@ function protectPage(requiredRole = null) {
     // Wrong role, redirect to appropriate dashboard
     switch(user.role) {
       case 'farmer':
-        window.location.href = 'farmer-dashboard.html';
+        if (typeof loadSidebar === 'function') loadSidebar('farmer');
+        window.location.href = '/html_files/farmer/farmer-dashboard.html';
         break;
       case 'consumer':
-        window.location.href = 'consumer-dashboard.html';
+        if (typeof loadSidebar === 'function') loadSidebar('consumer');
+        window.location.href = '/html_files/consumer/consumer-dashboard.html';
         break;
       case 'supplier':
-        window.location.href = 'supplier-dashboard.html';
+        if (typeof loadSidebar === 'function') loadSidebar('supplier');
+        window.location.href = '/html_files/supplier/supplier-dashboard.html';
         break;
       case 'expert':
-        window.location.href = 'expert-dashboard.html';
+        if (typeof loadSidebar === 'function') loadSidebar('expert');
+        window.location.href = '/html_files/expert/expert-dashboard.html';
         break;
       default:
-        window.location.href = 'index.html';
+        window.location.href = '/html_files/index.html';
     }
     return false;
   }
@@ -110,7 +114,7 @@ function handleCreateAccount(event) {
     localStorage.setItem('users', JSON.stringify(users));
 
     alert('Account created successfully! You can now log in.');
-    window.location.href = 'login.html';
+    window.location.href = '/html_files/auth/login.html';
 }
 
 // Initialize dashboard (call this on dashboard pages)

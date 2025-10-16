@@ -70,9 +70,9 @@ function displayProductsForConsumers() {
   
   productsContainer.innerHTML = products.map(product => `
     <div class="product-card" data-product-id="${product.id}" data-farmer-id="${product.farmer_id}">
-      <img src="${product.image_url || 'https://images.unsplash.com/photo-1560493676-04071c5f467b?w=300&h=200&fit=crop'}" 
+      <img src="${product.image_url || '/images/cherries.png'}" 
            alt="${product.name}" 
-           onerror="this.src='https://images.unsplash.com/photo-1560493676-04071c5f467b?w=300&h=200&fit=crop'"/>
+           onerror="this.src='/images/cherries.png'"/>
       <div class="product-desc">
         <div class="product-title">${product.name}</div>
         <div class="product-price">₹${product.price} / ${product.unit}</div>
@@ -94,11 +94,15 @@ function displayProductsForConsumers() {
 
 // Filter products by category
 function filterProductsByCategory(category) {
-  const products = getAllFarmerProducts();
-  const filteredProducts = category === 'all' ? products : products.filter(p => 
-    p.category.toLowerCase() === category.toLowerCase()
-  );
-  
+  const base = (CONSUMER_PRODUCTS_CACHE && CONSUMER_PRODUCTS_CACHE.length)
+    ? CONSUMER_PRODUCTS_CACHE
+    : getAllFarmerProducts().map(normalizeProduct);
+
+  const filteredProducts =
+    category === 'all'
+      ? base
+      : base.filter(p => (p.category || '').toLowerCase() === category.toLowerCase());
+
   displayFilteredProducts(filteredProducts);
 }
 
@@ -119,9 +123,9 @@ function displayFilteredProducts(products) {
   
   productsContainer.innerHTML = products.map(product => `
     <div class="product-card" data-product-id="${product.id}" data-farmer-id="${product.farmer_id}">
-      <img src="${product.image_url || 'https://images.unsplash.com/photo-1560493676-04071c5f467b?w=300&h=200&fit=crop'}" 
+      <img src="${product.image_url || '/images/cherries.png'}" 
            alt="${product.name}" 
-           onerror="this.src='https://images.unsplash.com/photo-1560493676-04071c5f467b?w=300&h=200&fit=crop'"/>
+           onerror="this.src='/images/cherries.png'"/>
       <div class="product-desc">
         <div class="product-title">${product.name}</div>
         <div class="product-price">₹${product.price} / ${product.unit}</div>
@@ -143,47 +147,55 @@ function displayFilteredProducts(products) {
 
 // Search products
 function searchProducts(searchTerm) {
-  const products = getAllFarmerProducts();
-  const filteredProducts = products.filter(product => 
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.farmer_name.toLowerCase().includes(searchTerm.toLowerCase())
+  const base = (CONSUMER_PRODUCTS_CACHE && CONSUMER_PRODUCTS_CACHE.length)
+    ? CONSUMER_PRODUCTS_CACHE
+    : getAllFarmerProducts().map(normalizeProduct);
+
+  const q = (searchTerm || '').toLowerCase();
+  const filteredProducts = base.filter(product =>
+    (product.name || '').toLowerCase().includes(q) ||
+    (product.description || '').toLowerCase().includes(q) ||
+    (product.category || '').toLowerCase().includes(q) ||
+    (product.farmer_name || '').toLowerCase().includes(q)
   );
-  
+
   displayFilteredProducts(filteredProducts);
-  
-  // Update the heading to show search results
-  const heading = document.querySelector('h3');
+
+  const heading = document.getElementById('featured-heading');
   if (heading && searchTerm) {
     heading.textContent = `Search Results for "${searchTerm}" (${filteredProducts.length} found)`;
   }
 }
 
-// Add to cart functionality (placeholder)
+// Replace addToCart to fallback to cache when local farmer storage misses
 function addToCart(productId, farmerId) {
-  // Get the product details
+  // Try local farmer storage first
   const farmerProducts = JSON.parse(localStorage.getItem(`farmer_products_${farmerId}`) || '[]');
-  const product = farmerProducts.find(p => p.id === productId);
-  
+  let product = farmerProducts.find(p => String(p.id) === String(productId));
+
+  // Fallback to cached products (API or local normalized)
+  if (!product && CONSUMER_PRODUCTS_CACHE && CONSUMER_PRODUCTS_CACHE.length) {
+    product = CONSUMER_PRODUCTS_CACHE.find(p => String(p.id) === String(productId));
+  }
+
   if (!product) {
     showConsumerNotification('Product not found!', 'error');
     return;
   }
-  
-  // Get current cart or create new one
+
   const currentUser = getCurrentUser();
   if (!currentUser) {
     showConsumerNotification('Please login to add items to cart', 'error');
     return;
   }
-  
+
   const cartKey = `cart_${currentUser.id}`;
   const cart = JSON.parse(localStorage.getItem(cartKey) || '[]');
-  
-  // Check if product already in cart
-  const existingItem = cart.find(item => item.productId === productId && item.farmerId === farmerId);
-  
+
+  const existingItem = cart.find(item =>
+    String(item.productId) === String(productId) && String(item.farmerId) === String(farmerId)
+  );
+
   if (existingItem) {
     existingItem.quantity += 1;
   } else {
@@ -192,13 +204,13 @@ function addToCart(productId, farmerId) {
       farmerId: farmerId,
       productName: product.name,
       price: product.price,
-      unit: product.unit,
+      unit: product.unit || 'kg',
       quantity: 1,
       farmerName: product.farmer_name || 'Unknown Farmer',
       addedAt: new Date().toISOString()
     });
   }
-  
+
   localStorage.setItem(cartKey, JSON.stringify(cart));
   showConsumerNotification(`${product.name} added to cart!`, 'success');
 }
@@ -249,9 +261,21 @@ function showConsumerNotification(message, type = 'info') {
 // Load user data for farmer information
 async function loadUserDataForConsumer() {
   try {
-    const response = await fetch('dataa.json');
+    const response = await fetch('/dataa.json');
     const userData = await response.json();
     localStorage.setItem('userData', JSON.stringify(userData));
+    if (Array.isArray(userData.farmer_products)) {
+      const grouped = {};
+      userData.farmer_products.forEach(p => {
+        const fid = p.farmer_id;
+        if (!fid) return;
+        if (!grouped[fid]) grouped[fid] = [];
+        grouped[fid].push(p);
+      });
+      Object.keys(grouped).forEach(fid => {
+        localStorage.setItem(`farmer_products_${fid}`, JSON.stringify(grouped[fid]));
+      });
+    }
     return userData;
   } catch (error) {
     console.error('Error loading user data:', error);
@@ -270,7 +294,7 @@ function handleLogout() {
     
     // Redirect to login page after a short delay
     setTimeout(() => {
-      window.location.href = 'login.html';
+      window.location.href = '/html_files/auth/login.html';
     }, 1500);
   }
 }
@@ -280,7 +304,7 @@ function displayUserInfo() {
   const user = getCurrentUser();
   if (!user) {
     // Redirect to login if no user
-    window.location.href = 'login.html';
+    window.location.href = '/html_files/auth/login.html';
     return;
   }
   
@@ -314,7 +338,7 @@ function displayUserInfo() {
 function checkAuthentication() {
   const user = getCurrentUser();
   if (!user) {
-    window.location.href = 'login.html';
+    window.location.href = '/html_files/auth/login.html';
     return false;
   }
   
@@ -322,16 +346,16 @@ function checkAuthentication() {
     // Redirect to appropriate dashboard based on role
     switch(user.role) {
       case 'farmer':
-        window.location.href = 'farmer-dashboard.html';
+        window.location.href = '/html_files/farmer/farmer-dashboard.html';
         break;
       case 'supplier':
-        window.location.href = 'supplier-dashboard.html';
+        window.location.href = '/html_files/supplier/supplier-dashboard.html';
         break;
       case 'expert':
-        window.location.href = 'expert-dashboard.html';
+        window.location.href = '/html_files/expert/expert-dashboard.html';
         break;
       default:
-        window.location.href = 'login.html';
+        window.location.href = '/html_files/auth/login.html';
     }
     return false;
   }
@@ -342,20 +366,16 @@ function checkAuthentication() {
 // Initialize consumer products when DOM is loaded
 document.addEventListener('DOMContentLoaded', async function() {
   const currentPage = window.location.pathname.split('/').pop();
-  
   if (currentPage === 'consumer-dashboard.html') {
-    // Check authentication first
-    if (!checkAuthentication()) {
-      return;
-    }
-    
-    // Display user information
+    if (!checkAuthentication()) return;
+
     displayUserInfo();
-    
-    // Load user data first
     await loadUserDataForConsumer();
-    
-    // Display products
+
+    // Preload products (API with fallback) into cache
+    await loadConsumerProducts();
+
+    // Render
     displayProductsForConsumers();
     
     // Set up search functionality
@@ -370,7 +390,7 @@ document.addEventListener('DOMContentLoaded', async function() {
           searchProducts(searchTerm);
         } else {
           displayProductsForConsumers();
-          const heading = document.querySelector('h3');
+          const heading = document.getElementById('featured-heading');
           if (heading) {
             heading.textContent = 'Featured Products';
           }
@@ -393,7 +413,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         filterProductsByCategory(category);
         
         // Update heading
-        const heading = document.querySelector('h3');
+        const heading = document.getElementById('featured-heading');
         if (heading) {
           heading.textContent = category === 'all' ? 'All Products' : `${categoryText} Products`;
         }
@@ -401,3 +421,100 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
   }
 });
+
+// Top-level helpers and cache
+const CONSUMER_PRODUCTS_CACHE_KEY = 'consumer_products_cache_v1';
+let CONSUMER_PRODUCTS_CACHE = [];
+
+function normalizeProduct(p) {
+  return {
+    id: p.id ?? p._id ?? p.productId ?? null,
+    farmer_id: p.farmer_id ?? p.farmerId ?? null,
+    name: p.name ?? 'Unnamed',
+    category: p.category ?? 'General',
+    price: typeof p.price === 'number' ? p.price : Number(p.price ?? 0),
+    unit: p.unit ?? 'kg',
+    quantity: typeof p.quantity === 'number' ? p.quantity : Number(p.quantity ?? 0),
+    image_url: p.image_url ?? p.image ?? p.imageUrl ?? '/assets/icons/fruits/apple.svg',
+    description: p.description ?? '',
+    status: p.status ?? 'available',
+    organic: !!p.organic,
+    created_at: p.created_at ?? p.createdAt ?? new Date().toISOString(),
+    farmer_name: p.farmer_name ?? p.farmerName ?? 'Unknown Farmer',
+    farmer_location: p.farmer_location ?? p.farmerLocation ?? 'Unknown',
+  };
+}
+
+async function fetchProductsFromAPI() {
+  try {
+    const res = await fetch('/api/products');
+    if (!res.ok) throw new Error(`API ${res.status}`);
+    const raw = await res.json();
+    const normalized = Array.isArray(raw) ? raw.map(normalizeProduct) : [];
+    CONSUMER_PRODUCTS_CACHE = normalized;
+    localStorage.setItem(CONSUMER_PRODUCTS_CACHE_KEY, JSON.stringify(normalized));
+    return normalized;
+  } catch (e) {
+    console.warn('Products API fetch failed:', e.message);
+    const cached = JSON.parse(localStorage.getItem(CONSUMER_PRODUCTS_CACHE_KEY) || '[]');
+    CONSUMER_PRODUCTS_CACHE = cached;
+    return cached.length ? cached : null;
+  }
+}
+
+async function loadConsumerProducts() {
+  const apiProducts = await fetchProductsFromAPI();
+  if (apiProducts && apiProducts.length) return apiProducts;
+
+  // Fallback to local farmer products
+  const localProducts = getAllFarmerProducts().map(normalizeProduct);
+  CONSUMER_PRODUCTS_CACHE = localProducts;
+  return localProducts;
+}
+
+// Replace existing displayProductsForConsumers with API-enabled version
+function displayProductsForConsumers() {
+  const productsContainer = document.querySelector('.products-row');
+  if (!productsContainer) return;
+
+  // Load from API (with local fallback)
+  // Note: This function is sync by signature but uses cached results populated by async on DOMContentLoaded
+  const products = (CONSUMER_PRODUCTS_CACHE && CONSUMER_PRODUCTS_CACHE.length)
+    ? [...CONSUMER_PRODUCTS_CACHE]
+    : getAllFarmerProducts().map(normalizeProduct);
+
+  if (products.length === 0) {
+    productsContainer.innerHTML = `
+      <div style="text-align: center; padding: 40px; width: 100%; color: #666;">
+        <h3>No products available at the moment</h3>
+        <p>Check back later for fresh products from local farmers!</p>
+      </div>
+    `;
+    return;
+  }
+
+  products.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  productsContainer.innerHTML = products.map(product => `
+    <div class="product-card" data-product-id="${product.id}" data-farmer-id="${product.farmer_id ?? ''}">
+      <img src="${product.image_url || '/images/cherries.png'}"
+           alt="${product.name}"
+           onerror="this.src='/images/cherries.png'"/>
+      <div class="product-desc">
+        <div class="product-title">${product.name}</div>
+        <div class="product-price">₹${product.price} / ${product.unit || 'kg'}</div>
+        <div style="font-size: 0.85em; color: #666; margin: 4px 0;">
+          ${product.quantity} ${product.unit || 'kg'} available
+        </div>
+        <div style="font-size: 0.8em; color: #888; margin: 2px 0;">
+          by ${product.farmer_name}
+        </div>
+        <div style="font-size: 0.75em; color: #999;">
+          📍 ${product.farmer_location}
+        </div>
+        ${product.organic ? '<div style="font-size: 0.75em; color: #4CAE4E; font-weight: 600; margin-top: 4px;">🌱 Organic</div>' : ''}
+      </div>
+      <button class="add-btn" onclick="addToCart('${product.id}', '${product.farmer_id ?? ''}')">+ Add to Cart</button>
+    </div>
+  `).join('');
+}

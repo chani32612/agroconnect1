@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Farmer-Consumer Integration</title>
+        <script src="/auth.js"></script>
+        <script src="/farmer-products.js"></script>
+        <script src="/consumer-products.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            margin: 20px;
+            background: #f6fff4;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #4CAE4E;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #25632A;
+        }
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .product-item {
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .info { color: #17a2b8; }
+    </style>
+</head>
+<body>
+    <h1>🌱 Farmer-Consumer Integration Test</h1>
+    
+    <div class="test-section">
+        <h2>Step 1: Setup Test Data</h2>
+        <p>This will create sample farmer accounts and products to test the integration.</p>
+        <button class="test-button" onclick="setupTestData()">Setup Test Data</button>
+        <div id="setup-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Step 2: Add Sample Products (as Farmer)</h2>
+        <p>Add some sample products as different farmers.</p>
+        <button class="test-button" onclick="addSampleProducts()">Add Sample Products</button>
+        <div id="farmer-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Step 3: View Products (as Consumer)</h2>
+        <p>See how the farmer products appear to consumers.</p>
+        <button class="test-button" onclick="viewAsConsumer()">Load Consumer View</button>
+        <div id="consumer-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Step 4: Test Cart Functionality</h2>
+        <p>Test adding products to cart as a consumer.</p>
+        <button class="test-button" onclick="testCartFunctionality()">Test Add to Cart</button>
+        <div id="cart-results"></div>
+    </div>
+
+    <script>
+        function setupTestData() {
+            const results = document.getElementById('setup-results');
+            
+            // Load user data from dataa.json and store in localStorage
+            fetch('dataa.json')
+                .then(response => response.json())
+                .then(userData => {
+                    localStorage.setItem('userData', JSON.stringify(userData));
+                    results.innerHTML = '<p class="success">✓ User data loaded successfully!</p>';
+                    
+                    // Show available farmers
+                    const farmers = userData.users.filter(u => u.role === 'farmer');
+                    results.innerHTML += `<p class="info">Found ${farmers.length} farmers: ${farmers.map(f => f.username).join(', ')}</p>`;
+                })
+                .catch(error => {
+                    results.innerHTML = `<p class="error">✗ Error loading user data: ${error.message}</p>`;
+                });
+        }
+        
+        function addSampleProducts() {
+            const results = document.getElementById('farmer-results');
+            results.innerHTML = '<p>Adding sample products...</p>';
+            
+            // Mock farmer 1 (ID: 1)
+            const farmer1 = {
+                id: 1,
+                username: 'farmer101',
+                role: 'farmer'
+            };
+            localStorage.setItem('currentUser', JSON.stringify(farmer1));
+            
+            const sampleProducts = [
+                {
+                    name: 'Fresh Organic Tomatoes',
+                    category: 'Vegetables',
+                    description: 'Juicy red tomatoes, freshly harvested from organic farm',
+                    price: 45,
+                    quantity: 50,
+                    unit: 'kg',
+                    harvest_date: '2024-01-20',
+                    expiry_date: '2024-01-30',
+                    location: 'Ahmedabad, Gujarat',
+                    organic: true,
+                    image_url: 'https://images.unsplash.com/photo-1546470427-e5ac89cd0b31?w=300&h=200&fit=crop'
+                },
+                {
+                    name: 'Premium Wheat Grain',
+                    category: 'Grains',
+                    description: 'High quality wheat grain, perfect for flour making',
+                    price: 28,
+                    quantity: 200,
+                    unit: 'kg',
+                    harvest_date: '2024-01-15',
+                    expiry_date: '2024-07-15',
+                    location: 'Ahmedabad, Gujarat',
+                    organic: false,
+                    image_url: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=300&h=200&fit=crop'
+                },
+                {
+                    name: 'Fresh Green Spinach',
+                    category: 'Vegetables',
+                    description: 'Organic spinach leaves, rich in iron and vitamins',
+                    price: 35,
+                    quantity: 25,
+                    unit: 'kg',
+                    harvest_date: '2024-01-22',
+                    expiry_date: '2024-01-27',
+                    location: 'Ahmedabad, Gujarat',
+                    organic: true,
+                    image_url: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=300&h=200&fit=crop'
+                }
+            ];
+            
+            let addedCount = 0;
+            sampleProducts.forEach(product => {
+                const added = addProduct(product);
+                if (added) addedCount++;
+            });
+            
+            results.innerHTML = `<p class="success">✓ Added ${addedCount} products for Farmer 1</p>`;
+            
+            // Show added products
+            const products = getFarmerProducts();
+            results.innerHTML += `<div class="product-grid">`;
+            products.forEach(product => {
+                results.innerHTML += `
+                    <div class="product-item">
+                        <strong>${product.name}</strong><br>
+                        Category: ${product.category}<br>
+                        Price: ₹${product.price}/${product.unit}<br>
+                        Quantity: ${product.quantity} ${product.unit}<br>
+                        ${product.organic ? '🌱 Organic' : ''}
+                    </div>
+                `;
+            });
+            results.innerHTML += `</div>`;
+        }
+        
+        function viewAsConsumer() {
+            const results = document.getElementById('consumer-results');
+            results.innerHTML = '<p>Loading consumer view...</p>';
+            
+            // Mock consumer user
+            const consumer = {
+                id: 2,
+                username: 'consumer_jane',
+                role: 'consumer'
+            };
+            localStorage.setItem('currentUser', JSON.stringify(consumer));
+            
+            // Get all farmer products
+            const allProducts = getAllFarmerProducts();
+            
+            results.innerHTML = `<p class="success">✓ Found ${allProducts.length} products available for consumers</p>`;
+            
+            if (allProducts.length > 0) {
+                results.innerHTML += `<div class="product-grid">`;
+                allProducts.forEach(product => {
+                    results.innerHTML += `
+                        <div class="product-item">
+                            <strong>${product.name}</strong><br>
+                            Category: ${product.category}<br>
+                            Price: ₹${product.price}/${product.unit}<br>
+                            Available: ${product.quantity} ${product.unit}<br>
+                            Farmer: ${product.farmer_name || 'Unknown'}<br>
+                            Location: ${product.farmer_location || 'Unknown'}<br>
+                            ${product.organic ? '🌱 Organic' : ''}
+                        </div>
+                    `;
+                });
+                results.innerHTML += `</div>`;
+            } else {
+                results.innerHTML += '<p class="info">No products available. Make sure to add sample products first!</p>';
+            }
+        }
+        
+        function testCartFunctionality() {
+            const results = document.getElementById('cart-results');
+            results.innerHTML = '<p>Testing cart functionality...</p>';
+            
+            // Ensure we're logged in as consumer
+            const consumer = {
+                id: 2,
+                username: 'consumer_jane',
+                role: 'consumer'
+            };
+            localStorage.setItem('currentUser', JSON.stringify(consumer));
+            
+            // Get first available product
+            const allProducts = getAllFarmerProducts();
+            
+            if (allProducts.length === 0) {
+                results.innerHTML = '<p class="error">✗ No products available to add to cart. Add sample products first!</p>';
+                return;
+            }
+            
+            const firstProduct = allProducts[0];
+            
+            // Add to cart
+            addToCart(firstProduct.id, firstProduct.farmer_id);
+            
+            // Check cart
+            const cart = JSON.parse(localStorage.getItem('cart_2') || '[]');
+            
+            results.innerHTML = `<p class="success">✓ Cart functionality working!</p>`;
+            results.innerHTML += `<p class="info">Cart contains ${cart.length} items:</p>`;
+            
+            if (cart.length > 0) {
+                results.innerHTML += `<div class="product-grid">`;
+                cart.forEach(item => {
+                    results.innerHTML += `
+                        <div class="product-item">
+                            <strong>${item.productName}</strong><br>
+                            Price: ₹${item.price}/${item.unit}<br>
+                            Quantity: ${item.quantity}<br>
+                            Farmer: ${item.farmerName}<br>
+                            Added: ${new Date(item.addedAt).toLocaleString()}
+                        </div>
+                    `;
+                });
+                results.innerHTML += `</div>`;
+            }
+        }
+    </script>
+</body>
+</html>
